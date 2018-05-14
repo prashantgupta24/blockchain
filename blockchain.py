@@ -1,23 +1,47 @@
 import hashlib
 import json
 
-class Blockchain():
-    def __init__(self):
-        self.transactions = []
 
-    def __repr__(self):
-        return str(self.transactions)
+class Transaction:
+    def __init__(self, fromAddress, toAddress, amount):
+        self.fromAddress = fromAddress
+        self.toAddress = toAddress
+        self.amount = amount
 
-    def addBlock(self, data):
-        self.transactions.append(data)
+class Block:
+    def __init__(self, transactions, previousHash):
+        self.transactions=transactions
+        self.previousHash=previousHash
+        self.hashVal=self.calculateHash(transactions)
 
-    def getHash(self, data):
+    def mineBlock(self):
+        pass
+
+    def calculateHash(self, data):
         hashVal = hashlib.sha256(json.dumps(data, sort_keys=True).encode())
         return str(hashVal.hexDigest())
 
-blockchain = Blockchain()
-blockchain.addBlock(1)
-blockchain.addBlock(4)
-blockchain.addBlock(5)
+class Blockchain():
+    def __init__(self):
+        self.pendingTransactions = []
+        genesisBlock = Block(transactions=[], previousHash=0)
+        self.chain = [genesisBlock]
 
-print(blockchain)
+    def __repr__(self):
+        return str(self.pendingTransactions)
+
+    def mineBlock(self):
+        newBlock = Block(transactions=self.pendingTransactions, previousHash=self.chain[-1].hashVal)
+        self.chain.append(newBlock)
+        self.pendingTransactions=[]
+
+    def addTransaction(self, data):
+        self.pendingTransactions.append(data)
+
+
+
+myBlockchain = Blockchain()
+
+myBlockchain.addTransaction(Transaction("a", "b", 100))
+
+print(myBlockchain)
