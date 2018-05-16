@@ -1,6 +1,6 @@
 import hashlib
 import json
-
+import rsa
 
 class Transaction:
     def __init__(self, fromAddress, toAddress, amount):
@@ -42,7 +42,8 @@ class Blockchain():
             result.append("Block " + str(self.chain.index(block))+"\n\n"+str(block))
         return "\n\n".join(result)
 
-    def mineBlock(self):
+    def mineBlock(self, user):
+        self.pendingTransactions.append(Transaction(fromAddress="SYSTEM", toAddress=user, amount=50))
         newBlock = Block(transactions=self.pendingTransactions, previousHash=self.chain[-1].hashVal)
         self.chain.append(newBlock)
         self.pendingTransactions=[]
@@ -72,5 +73,14 @@ class Blockchain():
 
         return balance
 
-    def addTransaction(self, data):
-        self.pendingTransactions.append(data)
+    def addTransaction(self, transaction, signature):
+        if not rsa.verify(str(transaction).encode(encoding='utf_8'), signature, transaction.fromAddress):
+            print("incorrect signature!")
+        if self.getBalance(transaction.fromAddress) >= transaction.amount:
+            self.pendingTransactions.append(transaction)
+        else:
+            print("insufficient balance!")
+
+
+# (pub, priv) = rsa.newkeys(512)
+# print(pub)
