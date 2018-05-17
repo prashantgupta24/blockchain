@@ -20,11 +20,20 @@ myBlockchain = Blockchain()
 
 #print(myBlockchain)
 [pub, priv]=rsa.newkeys(512)
-myBlockchain.mineBlock(str(pub))
-print(myBlockchain.getBalance(user=str(pub)))
-transaction = Transaction(fromAddress=str(pub), toAddress="Brian", amount=50)
+myBlockchain.mineBlock(pub)
+#print(myBlockchain.getBalance(user=str(pub)))
+transaction = Transaction(fromAddress=pub, toAddress="Brian", amount=20)
 signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv, "SHA-256")
-myBlockchain.addTransaction(transaction=transaction, signature=signature)
+transaction.addSignature(signature=signature)
+myBlockchain.addTransaction(transaction=transaction)
+
+
+
+myBlockchain.mineBlock("Brian")
+myBlockchain.chain[2].transactions[0].amount=670
+myBlockchain.chain[2].hashVal = myBlockchain.chain[2].calculateHash()
+myBlockchain.mineBlock("Charles")
+print(myBlockchain)
 #signature = rsa.sign(encMessage, priv, "SHA-256")
 # encMessage=str(t).encode(encoding='utf_8')
 # print(encMessage)

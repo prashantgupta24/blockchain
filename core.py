@@ -7,12 +7,16 @@ class Transaction:
         self.fromAddress = fromAddress
         self.toAddress = toAddress
         self.amount = amount
+        self.signature = ""
 
     def __repr__(self):
         return f"From {self.fromAddress} to {self.toAddress}, amount:{self.amount}"
 
+    def addSignature(self, signature):
+        self.signature = signature
+
     def getData(self):
-        return {"from_address":self.fromAddress, "to_address":self.toAddress, "amount":self.amount}
+        return {"from_address":str(self.fromAddress), "to_address":str(self.toAddress), "amount":self.amount}
 
 class Block:
     def __init__(self, transactions, previousHash):
@@ -43,23 +47,40 @@ class Blockchain():
         return "\n\n".join(result)
 
     def mineBlock(self, user):
-        self.pendingTransactions.append(Transaction(fromAddress="SYSTEM", toAddress=user, amount=50))
-        newBlock = Block(transactions=self.pendingTransactions, previousHash=self.chain[-1].hashVal)
-        self.chain.append(newBlock)
-        self.pendingTransactions=[]
+        isChainValid, issueBlock = self.validateChain()
+        if isChainValid:
+            self.pendingTransactions.insert(0, Transaction(fromAddress="SYSTEM", toAddress=user, amount=50))
+            newBlock = Block(transactions=self.pendingTransactions, previousHash=self.chain[-1].hashVal)
+            self.chain.append(newBlock)
+            self.pendingTransactions=[]
+        else:
+            print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}")
 
-    def isChainValid(self):
-        for i in range(1,len(self.chain)):
-            block1 = self.chain[i-1]
-            block2 = self.chain[i]
+    def validateChain(self):
+        result = True
+        issueBlock = 0
+        # for i in range(1,len(self.chain)):
+        #     block1 = self.chain[i-1]
+        #     block2 = self.chain[i]
+        #
+        #     if block1.hashVal != block1.calculateHash():
+        #         result = False
+        #         issueBlock = block1
+        #
+        #     if block2.hashVal != block2.calculateHash():
+        #         result = False
+        #         issueBlock = block2
+        #
+        #     if block2.previousHash != block1.hashVal:
+        #         result = False
+        #         issueBlock
 
-            if block1.hashVal != block1.calculateHash():
-                return False
+        for i in range(len(self.chain)):
+            if self.chain[i].hashVal != self.chain[i].calculateHash() or (i < len(self.chain) - 1 and self.chain[i+1].previousHash != self.chain[i].hashVal):
+                result = False
+                issueBlock = i
 
-            if block2.previousHash != block1.hashVal:
-                return False
-
-        return True
+        return result, issueBlock
 
 
     def getBalance(self, user):
@@ -73,13 +94,19 @@ class Blockchain():
 
         return balance
 
-    def addTransaction(self, transaction, signature):
-        if not rsa.verify(str(transaction).encode(encoding='utf_8'), signature, transaction.fromAddress):
-            print("incorrect signature!")
+    def addTransaction(self, transaction):
+        if not self.isTransactionValid(transaction=transaction):
+            print(f"Incorrect signature for transaction\n{transaction}!\n")
         if self.getBalance(transaction.fromAddress) >= transaction.amount:
             self.pendingTransactions.append(transaction)
         else:
-            print("insufficient balance!")
+            print(f"Insufficient balance! You only have {self.getBalance(transaction.fromAddress)} coins but you are trying to send {transaction.amount}")
+
+    def isTransactionValid(self, transaction):
+        if transaction.signature == "" or not rsa.verify(str(transaction).encode(encoding='utf_8'), transaction.signature, transaction.fromAddress):
+            return False
+
+        return True
 
 
 # (pub, priv) = rsa.newkeys(512)
