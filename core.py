@@ -15,6 +15,12 @@ class Transaction:
         #return f"From {self.fromAddress} to {self.toAddress}, amount:{self.amount}"
         return str(self.getData())
 
+    def __eq__(self, other):
+        return self.timestamp == other.timestamp
+
+    def __hash__(self):
+        return hash(self.timestamp)
+
     def addSignature(self, signature):
         self.signature = signature
 
@@ -117,9 +123,17 @@ class Blockchain():
                 if transaction.fromAddress == user:
                     balance -= transaction.amount
 
+        for transaction in self.pendingTransactions:
+            if transaction.toAddress == user:
+                balance += transaction.amount
+            if transaction.fromAddress == user:
+                balance -= transaction.amount
+
         return balance
 
     def addTransaction(self, transaction):
+        if not isinstance(transaction, Transaction):
+            print(f"Not a transaction object!\n{transaction}!\n")
         if not self.isTransactionValid(transaction=transaction):
             print(f"Incorrect signature for transaction\n{transaction}!\n")
         elif self.getBalance(transaction.fromAddress) >= transaction.amount:
