@@ -1,5 +1,6 @@
 import hashlib
 import json
+import time
 import rsa
 
 class Transaction:
@@ -7,16 +8,18 @@ class Transaction:
         self.fromAddress = fromAddress
         self.toAddress = toAddress
         self.amount = amount
+        self.timestamp = time.time()
         self.signature = ""
 
     def __repr__(self):
-        return f"From {self.fromAddress} to {self.toAddress}, amount:{self.amount}"
+        #return f"From {self.fromAddress} to {self.toAddress}, amount:{self.amount}"
+        return str(self.getData())
 
     def addSignature(self, signature):
         self.signature = signature
 
     def getData(self):
-        return {"from_address":str(self.fromAddress), "to_address":str(self.toAddress), "amount":self.amount}
+        return {"timestamp":self.timestamp, "from_address":str(self.fromAddress), "to_address":str(self.toAddress), "amount":self.amount}
 
 class Block:
     def __init__(self, transactions, previousHash):
@@ -25,7 +28,7 @@ class Block:
         self.hashVal=self.calculateHash()
 
     def __repr__(self):
-        return f"Transactions are {str(self.transactions)} \nPrevious hash is {self.previousHash} \nMy hash is {self.hashVal}"
+        return f"Transactions are {str(self.transactions)} \n\nPrevious hash is {self.previousHash} \nMy hash is {self.hashVal}"
 
     def calculateHash(self):
         #TODO POW

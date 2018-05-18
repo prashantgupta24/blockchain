@@ -34,7 +34,9 @@ signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_arya, "SHA-
 transaction.addSignature(signature=signature)
 myBlockchain.addTransaction(transaction=transaction)
 
-
+#same timestamp, same transaction
+transaction = myBlockchain.chain[1].transactions[0]
+myBlockchain.chain[1].transactions.append(transaction)
 
 myBlockchain.mineBlock(pub_bran)
 
@@ -65,6 +67,12 @@ print(myBlockchain)
 
 for name in nameMap:
     print(f"\nBalance for {name} is {myBlockchain.getBalance(user=nameMap.get(name))}")
+
+
+
+
+
+
 
 #signature = rsa.sign(encMessage, priv, "SHA-256")
 # encMessage=str(t).encode(encoding='utf_8')
