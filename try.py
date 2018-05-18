@@ -37,20 +37,27 @@ myBlockchain.addTransaction(transaction=transaction)
 #same timestamp, same transaction
 transaction = myBlockchain.chain[1].transactions[0]
 myBlockchain.chain[1].transactions.append(transaction)
+myBlockchain.chain[1].transactions.append(transaction)
+myBlockchain.chain[1].transactions.append(transaction)
+myBlockchain.chain[1].hashVal = myBlockchain.chain[1].calculateHash()
 
-myBlockchain.mineBlock(pub_bran)
+#^^ this works, no way of preventing adding multiple transactions with exact same values. (probably unique timestamp should take care, but then the same transaction can be added to different blocks)
 
-transaction = Transaction(fromAddress=pub_bran, toAddress=pub_davos, amount=5)
-signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_bran, "SHA-256")
-transaction.addSignature(signature=signature)
-myBlockchain.addTransaction(transaction=transaction)
+# can block hashing propagation work? change block 1, recalculate hash, save it, update b2.prev hash = hash1, recalculate hash of block 2, etc etc?
 
-myBlockchain.mineBlock(pub_cersei)
-
-transaction = Transaction(fromAddress=pub_cersei, toAddress=pub_arya, amount=40)
-signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_cersei, "SHA-256")
-transaction.addSignature(signature=signature)
-myBlockchain.addTransaction(transaction=transaction)
+# myBlockchain.mineBlock(pub_bran)
+#
+# transaction = Transaction(fromAddress=pub_bran, toAddress=pub_davos, amount=5)
+# signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_bran, "SHA-256")
+# transaction.addSignature(signature=signature)
+# myBlockchain.addTransaction(transaction=transaction)
+#
+# myBlockchain.mineBlock(pub_cersei)
+#
+# transaction = Transaction(fromAddress=pub_cersei, toAddress=pub_arya, amount=40)
+# signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_cersei, "SHA-256")
+# transaction.addSignature(signature=signature)
+# myBlockchain.addTransaction(transaction=transaction)
 
 # transaction = Transaction(fromAddress=pub_bran, toAddress=pub_elia, amount=25)
 # signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_bran, "SHA-256")
@@ -61,12 +68,12 @@ myBlockchain.addTransaction(transaction=transaction)
 # myBlockchain.chain[1].hashVal = myBlockchain.chain[2].calculateHash()
 
 myBlockchain.mineBlock(pub_davos)
-myBlockchain.mineBlock(pub_elia)
+#myBlockchain.mineBlock(pub_elia)
 
 print(myBlockchain)
 
 for name in nameMap:
-    print(f"\nBalance for {name} is {myBlockchain.getBalance(user=nameMap.get(name))}")
+    print(f"\nBalance for name {name} : {nameMap.get(name)} is {myBlockchain.getBalance(user=nameMap.get(name))}")
 
 
 
