@@ -19,21 +19,53 @@ myBlockchain = Blockchain()
 # In[3]:
 
 #print(myBlockchain)
-[pub, priv]=rsa.newkeys(512)
-myBlockchain.mineBlock(pub)
-#print(myBlockchain.getBalance(user=str(pub)))
-transaction = Transaction(fromAddress=pub, toAddress="Brian", amount=20)
-signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv, "SHA-256")
+[pub_arya, priv_arya]=rsa.newkeys(512)
+[pub_bran, priv_bran]=rsa.newkeys(512)
+[pub_cersei, priv_cersei]=rsa.newkeys(512)
+[pub_davos, priv_davos]=rsa.newkeys(512)
+[pub_elia, priv_elia]=rsa.newkeys(512)
+
+nameMap = {"arya":pub_arya, "bran":pub_bran, "cersei":pub_cersei, "davos":pub_davos, "elia":pub_elia}
+
+myBlockchain.mineBlock(pub_arya)
+
+transaction = Transaction(fromAddress=pub_arya, toAddress=pub_bran, amount=30)
+signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_arya, "SHA-256")
 transaction.addSignature(signature=signature)
 myBlockchain.addTransaction(transaction=transaction)
 
 
 
-myBlockchain.mineBlock("Brian")
-myBlockchain.chain[2].transactions[0].amount=670
-myBlockchain.chain[2].hashVal = myBlockchain.chain[2].calculateHash()
-myBlockchain.mineBlock("Charles")
+myBlockchain.mineBlock(pub_bran)
+
+transaction = Transaction(fromAddress=pub_bran, toAddress=pub_davos, amount=5)
+signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_bran, "SHA-256")
+transaction.addSignature(signature=signature)
+myBlockchain.addTransaction(transaction=transaction)
+
+myBlockchain.mineBlock(pub_cersei)
+
+transaction = Transaction(fromAddress=pub_cersei, toAddress=pub_arya, amount=40)
+signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_cersei, "SHA-256")
+transaction.addSignature(signature=signature)
+myBlockchain.addTransaction(transaction=transaction)
+
+# transaction = Transaction(fromAddress=pub_bran, toAddress=pub_elia, amount=25)
+# signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_bran, "SHA-256")
+# transaction.addSignature(signature=signature)
+# myBlockchain.addTransaction(transaction=transaction)
+
+# myBlockchain.chain[1].transactions[0].amount=230
+# myBlockchain.chain[1].hashVal = myBlockchain.chain[2].calculateHash()
+
+myBlockchain.mineBlock(pub_davos)
+myBlockchain.mineBlock(pub_elia)
+
 print(myBlockchain)
+
+for name in nameMap:
+    print(f"\nBalance for {name} is {myBlockchain.getBalance(user=nameMap.get(name))}")
+
 #signature = rsa.sign(encMessage, priv, "SHA-256")
 # encMessage=str(t).encode(encoding='utf_8')
 # print(encMessage)

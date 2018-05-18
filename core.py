@@ -28,6 +28,7 @@ class Block:
         return f"Transactions are {str(self.transactions)} \nPrevious hash is {self.previousHash} \nMy hash is {self.hashVal}"
 
     def calculateHash(self):
+        #TODO POW
         data = [x.getData() for x in self.transactions]
         data.append(self.previousHash)
         #print(f"data is {data}")
@@ -39,11 +40,12 @@ class Blockchain():
         self.pendingTransactions = []
         genesisBlock = Block(transactions=[], previousHash=0)
         self.chain = [genesisBlock]
+        self.debug = True
 
     def __repr__(self):
         result = []
         for block in self.chain:
-            result.append("Block " + str(self.chain.index(block))+"\n\n"+str(block))
+            result.append("\nBlock " + str(self.chain.index(block))+"\n\n"+str(block))
         return "\n\n".join(result)
 
     def mineBlock(self, user):
@@ -54,31 +56,40 @@ class Blockchain():
             self.chain.append(newBlock)
             self.pendingTransactions=[]
         else:
-            print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}")
+            print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock}...")
+            self.chain = self.chain[:issueBlock]
+
 
     def validateChain(self):
         result = True
         issueBlock = 0
-        # for i in range(1,len(self.chain)):
-        #     block1 = self.chain[i-1]
-        #     block2 = self.chain[i]
-        #
-        #     if block1.hashVal != block1.calculateHash():
-        #         result = False
-        #         issueBlock = block1
-        #
-        #     if block2.hashVal != block2.calculateHash():
-        #         result = False
-        #         issueBlock = block2
-        #
-        #     if block2.previousHash != block1.hashVal:
-        #         result = False
-        #         issueBlock
 
         for i in range(len(self.chain)):
-            if self.chain[i].hashVal != self.chain[i].calculateHash() or (i < len(self.chain) - 1 and self.chain[i+1].previousHash != self.chain[i].hashVal):
+            block = self.chain[i]
+            #print(block)
+
+            if block.hashVal != block.calculateHash() or (i < len(self.chain) - 1 and self.chain[i+1].previousHash != block.hashVal):
+                if self.debug:
+                    print("block hash not matching!")
                 result = False
                 issueBlock = i
+                break
+
+            for transaction in block.transactions:
+                if transaction.fromAddress == "SYSTEM":
+                    if transaction.amount != 50:
+                        if self.debug:
+                            print(f"transaction SYSTEM not matching! {transaction}")
+                        result = False
+                        issueBlock = i
+                        break
+
+                elif not self.isTransactionValid(transaction=transaction):
+                    if self.debug:
+                        print(f"Transaction not matching! {transaction}")
+                    result = False
+                    issueBlock = i
+                    break
 
         return result, issueBlock
 
@@ -97,17 +108,18 @@ class Blockchain():
     def addTransaction(self, transaction):
         if not self.isTransactionValid(transaction=transaction):
             print(f"Incorrect signature for transaction\n{transaction}!\n")
-        if self.getBalance(transaction.fromAddress) >= transaction.amount:
+        elif self.getBalance(transaction.fromAddress) >= transaction.amount:
             self.pendingTransactions.append(transaction)
         else:
             print(f"Insufficient balance! You only have {self.getBalance(transaction.fromAddress)} coins but you are trying to send {transaction.amount}")
 
     def isTransactionValid(self, transaction):
-        if transaction.signature == "" or not rsa.verify(str(transaction).encode(encoding='utf_8'), transaction.signature, transaction.fromAddress):
+        if transaction.signature == "":
+            return False
+
+        try:
+            rsa.verify(str(transaction).encode(encoding='utf_8'), transaction.signature, transaction.fromAddress)
+        except rsa.VerificationError:
             return False
 
         return True
-
-
-# (pub, priv) = rsa.newkeys(512)
-# print(pub)
