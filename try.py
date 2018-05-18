@@ -34,16 +34,27 @@ signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_arya, "SHA-
 transaction.addSignature(signature=signature)
 myBlockchain.addTransaction(transaction=transaction)
 
+
 #same timestamp, same transaction
-transaction = myBlockchain.chain[1].transactions[0]
-myBlockchain.chain[1].transactions.append(transaction)
-myBlockchain.chain[1].transactions.append(transaction)
-myBlockchain.chain[1].transactions.append(transaction)
-myBlockchain.chain[1].hashVal = myBlockchain.chain[1].calculateHash()
+myBlockchain.addTransaction(transaction=transaction)
+myBlockchain.addTransaction(transaction=transaction)
 
-#^^ this works, no way of preventing adding multiple transactions with exact same values. (probably unique timestamp should take care, but then the same transaction can be added to different blocks)
+#same timestamp, same transaction
+transactions = list(myBlockchain.chain[1].transactions)
+transaction = transactions[0]
+transactions.append(transaction)
+transactions.append(transaction)
+transactions.append(transaction)
+#myBlockchain.chain[1].hashVal = myBlockchain.chain[1].calculateHash()
 
-# can block hashing propagation work? change block 1, recalculate hash, save it, update b2.prev hash = hash1, recalculate hash of block 2, etc etc?
+
+#^^ this works, no way of preventing adding multiple transactions with exact same values. (probably unique timestamp should take care, but then the same transaction can be added to different blocks, specially the last block)
+#   - Unique timestamp transactions only for a block(set implementation)
+
+# can block hashing propagation work? change block 1, recalculate hash, save it, update b2.prev hash = hash1, recalculate hash of block 2, etc etc? -> will break with POW
+
+# issue where in validating chain, final balance is checked to see if transaction1 was valid. It might result in incorrect result since at that moment in the chain, the transaction might be valid
+    # Solution might be to create a temp chain, and check if the transaction1 was valid at that time.
 
 # myBlockchain.mineBlock(pub_bran)
 #
@@ -68,7 +79,7 @@ myBlockchain.chain[1].hashVal = myBlockchain.chain[1].calculateHash()
 # myBlockchain.chain[1].hashVal = myBlockchain.chain[2].calculateHash()
 
 myBlockchain.mineBlock(pub_davos)
-#myBlockchain.mineBlock(pub_elia)
+myBlockchain.mineBlock(pub_elia)
 
 print(myBlockchain)
 
