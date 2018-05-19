@@ -40,8 +40,8 @@ class Block:
     def calculateHash(self):
         data = {}
         data["transactions"] = [x.getData() for x in self.transactions]
-        data["previousHash"] = (self.previousHash)
-        data["nonce"] = (self.nonce)
+        data["previousHash"] = self.previousHash
+        data["nonce"] = self.nonce
 
         hashVal = hashlib.sha256(json.dumps(data, sort_keys=True).encode())
         hexdigest = hashVal.hexdigest()
