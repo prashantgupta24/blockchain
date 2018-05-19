@@ -12,14 +12,13 @@ class Transaction:
         self.signature = ""
 
     def __repr__(self):
-        #return f"From {self.fromAddress} to {self.toAddress}, amount:{self.amount}"
         return str(self.getData())
 
     def __eq__(self, other):
-        return self.timestamp == other.timestamp
+        return self.fromAddress == other.fromAddress and self.toAddress == other.toAddress and self.amount == other.amount
 
     def __hash__(self):
-        return hash(self.timestamp)
+        return hash(self.getData())
 
     def addSignature(self, signature):
         self.signature = signature
@@ -47,7 +46,7 @@ class Block:
 
 class Blockchain():
     def __init__(self):
-        self.pendingTransactions = []
+        self.pendingTransactions = set()
         self.debug = True
         self.minedCoinbase = 50
         genesisBlock = Block(transactions=[], previousHash=0)
@@ -62,13 +61,15 @@ class Blockchain():
     def mineBlock(self, user):
         isChainValid, issueBlock = self.validateChain()
         if isChainValid:
-            self.pendingTransactions.insert(0, Transaction(fromAddress="SYSTEM", toAddress=user, amount=self.minedCoinbase))
-            newBlock = Block(transactions=self.pendingTransactions, previousHash=self.chain[-1].hashVal)
+            pendingTransactionsForBlock = list(self.pendingTransactions)
+            pendingTransactionsForBlock.insert(0, Transaction(fromAddress="SYSTEM", toAddress=user, amount=self.minedCoinbase))
+            newBlock = Block(transactions=pendingTransactionsForBlock, previousHash=self.chain[-1].hashVal)
             self.chain.append(newBlock)
             self.pendingTransactions=[]
         else:
-            print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock}...")
+            print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock} ...")
             if self.debug:
+                print("\nBlock which is being removed is:\n")
                 print(self.chain[issueBlock])
             self.chain = self.chain[:issueBlock]
 
@@ -76,10 +77,10 @@ class Blockchain():
     def validateChain(self):
         result = True
         issueBlock = 0
+        allTransactions = {}
 
         for i in range(len(self.chain)):
             block = self.chain[i]
-            #print(block)
 
             if block.hashVal != block.calculateHash() or (i < len(self.chain) - 1 and self.chain[i+1].previousHash != block.hashVal):
                 if self.debug:
@@ -89,27 +90,29 @@ class Blockchain():
                 break
 
             for transaction in block.transactions:
-                if transaction.fromAddress == "SYSTEM":
-                    if transaction.amount != self.minedCoinbase:
+                if transaction.timestamp in allTransactions and transaction == allTransactions.get(transaction.timestamp):
+                    if self.debug:
+                        print(f"Transaction already present \n{transaction}")
+                    result = False
+                    issueBlock = i
+                    break
+                else:
+                    allTransactions[transaction.timestamp] = transaction
+
+                    if transaction.fromAddress == "SYSTEM":
+                        if transaction.amount != self.minedCoinbase:
+                            if self.debug:
+                                print(f"transaction SYSTEM not matching! {transaction}")
+                            result = False
+                            issueBlock = i
+                            break
+
+                    elif not self.isTransactionValid(transaction=transaction):
                         if self.debug:
-                            print(f"transaction SYSTEM not matching! {transaction}")
+                            print(f"Transaction not matching! {transaction}")
                         result = False
                         issueBlock = i
                         break
-
-                elif not self.isTransactionValid(transaction=transaction):
-                    if self.debug:
-                        print(f"Transaction not matching! {transaction}")
-                    result = False
-                    issueBlock = i
-                    break
-
-                elif self.getBalance(transaction.fromAddress) < transaction.amount:
-                    if self.debug:
-                        print(f"Balance not proper! {transaction}")
-                    result = False
-                    issueBlock = i
-                    break
 
         return result, issueBlock
 
@@ -134,9 +137,14 @@ class Blockchain():
     def addTransaction(self, transaction):
         if not isinstance(transaction, Transaction):
             print(f"Not a transaction object!\n{transaction}!\n")
+            return
+        if transaction in self.pendingTransactions:
+            print(f"Transaction already present!\n{transaction}!\n")
+            return
         if not self.isTransactionValid(transaction=transaction):
             print(f"Incorrect signature for transaction\n{transaction}!\n")
-        elif self.getBalance(transaction.fromAddress) >= transaction.amount:
+            return
+        if self.getBalance(transaction.fromAddress) >= transaction.amount:
             self.pendingTransactions.append(transaction)
         else:
             print(f"Insufficient balance! You only have {self.getBalance(transaction.fromAddress)} coins but you are trying to send {transaction.amount}")
