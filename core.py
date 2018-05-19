@@ -8,7 +8,7 @@ class Transaction:
         self.fromAddress = fromAddress
         self.toAddress = toAddress
         self.amount = amount
-        self.timestamp = time.time() #TODO unique timestamp in one ?
+        self.timestamp = time.time()
         self.signature = ""
 
     def __repr__(self):
@@ -27,21 +27,29 @@ class Transaction:
         return {"timestamp":self.timestamp, "from_address":str(self.fromAddress), "to_address":str(self.toAddress), "amount":self.amount}
 
 class Block:
-    def __init__(self, transactions, previousHash):
+    def __init__(self, transactions, previousHash, miningDifficulty):
         self.transactions=transactions
         self.previousHash=previousHash
+        self.nonce = 0
+        self.miningDifficulty = miningDifficulty
         self.hashVal=self.calculateHash()
-        self.nonce = 0 #TODO
 
     def __repr__(self):
         return f"Transactions are {str(self.transactions)} \n\nPrevious hash is {self.previousHash} \nMy hash is {self.hashVal}"
 
     def calculateHash(self):
-        #TODO POW
-        data = [x.getData() for x in self.transactions]
-        data.append(self.previousHash)
-        #print(f"data is {data}")
+        data = {}
+        data["transactions"] = [x.getData() for x in self.transactions]
+        data["previousHash"] = (self.previousHash)
+        data["nonce"] = (self.nonce)
+
         hashVal = hashlib.sha256(json.dumps(data, sort_keys=True).encode())
+        hexdigest = hashVal.hexdigest()
+        while(hexdigest)[:self.miningDifficulty] != "0"*self.miningDifficulty:
+            data["nonce"] += 1
+            hashVal = hashlib.sha256(json.dumps(data, sort_keys=True).encode())
+            hexdigest = hashVal.hexdigest()
+
         return str(hashVal.hexdigest())
 
 class Blockchain():
@@ -49,7 +57,9 @@ class Blockchain():
         self.pendingTransactions = set()
         self.debug = True
         self.minedCoinbase = 50
-        genesisBlock = Block(transactions=[], previousHash=0)
+        #TODO set mining difficulty dynamically
+        self.miningDifficulty = 4
+        genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
 
     def __repr__(self):
@@ -63,7 +73,7 @@ class Blockchain():
         if isChainValid:
             pendingTransactionsForBlock = list(self.pendingTransactions)
             pendingTransactionsForBlock.insert(0, Transaction(fromAddress="SYSTEM", toAddress=user, amount=self.minedCoinbase))
-            newBlock = Block(transactions=pendingTransactionsForBlock, previousHash=self.chain[-1].hashVal)
+            newBlock = Block(transactions=pendingTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
             self.pendingTransactions=[]
         else:
