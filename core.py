@@ -15,7 +15,7 @@ class Transaction:
         return str(self.getData())
 
     def __eq__(self, other):
-        return self.fromAddress == other.fromAddress and self.toAddress == other.toAddress and self.amount == other.amount
+        return self.timestamp == other.timestamp and self.fromAddress == other.fromAddress and self.toAddress == other.toAddress and self.amount == other.amount
 
     def __hash__(self):
         return hash(self.getData())
