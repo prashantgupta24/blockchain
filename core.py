@@ -24,7 +24,13 @@ class Transaction:
         self.signature = signature
 
     def getData(self):
-        return {"timestamp":self.timestamp, "from_address":str(self.fromAddress), "to_address":str(self.toAddress), "amount":self.amount}
+        return {
+            "Timestamp": self.timestamp,
+            "From_address": str(self.fromAddress),
+            "To_address": str(self.toAddress),
+            "Amount": self.amount
+        }
+
 
 class Block:
     def __init__(self, transactions, previousHash, miningDifficulty):
@@ -34,8 +40,14 @@ class Block:
         self.miningDifficulty = miningDifficulty
         self.hashVal=self.calculateHash()
 
-    def __repr__(self):
-        return f"Transactions are {str(self.transactions)} \n\nPrevious hash is {self.previousHash} \nMy hash is {self.hashVal}"
+    def getData(self):
+        blockData = {}
+        blockData["Transactions"] = []
+        for transaction in self.transactions:
+            blockData["Transactions"].append(transaction.getData())
+        blockData["Previous hash"] = self.previousHash
+        blockData["My hash"] = self.hashVal
+        return blockData
 
     def calculateHash(self):
         data = {}
@@ -64,10 +76,15 @@ class Blockchain():
         self.chain = [genesisBlock]
 
     def __repr__(self):
-        result = []
+        return json.dumps(self.getData(), indent = 2)
+
+    def getData(self):
+        chainData = {}
+        chainData["lengthOfChain"] = len(self.chain)
+        chainData["Blocks"] = {}
         for block in self.chain:
-            result.append("\nBlock " + str(self.chain.index(block))+"\n\n"+str(block))
-        return "\n\n".join(result)
+            chainData["Blocks"]["Block " + str(self.chain.index(block))] = block.getData()
+        return chainData
 
     def mineBlock(self, user):
         isChainValid, issueBlock = self.isChainValid()
