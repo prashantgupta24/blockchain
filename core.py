@@ -54,6 +54,7 @@ class Block:
 
 class Blockchain():
     def __init__(self):
+        [self.pub_blockchain, self.priv_blockchain]=rsa.newkeys(512)
         self.pendingTransactions = set()
         self.debug = True
         self.minedCoinbase = 50
@@ -69,10 +70,15 @@ class Blockchain():
         return "\n\n".join(result)
 
     def mineBlock(self, user):
-        isChainValid, issueBlock = self.validateChain()
+        isChainValid, issueBlock = self.isChainValid()
         if isChainValid:
+            miningTransaction = Transaction(fromAddress=self.pub_blockchain, toAddress=user, amount=self.minedCoinbase)
+            signature = rsa.sign(str(miningTransaction).encode(encoding='utf_8'), self.priv_blockchain, "SHA-256")
+            miningTransaction.addSignature(signature=signature)
+
             pendingTransactionsForBlock = list(self.pendingTransactions)
-            pendingTransactionsForBlock.insert(0, Transaction(fromAddress="SYSTEM", toAddress=user, amount=self.minedCoinbase))
+            pendingTransactionsForBlock.insert(0, miningTransaction)
+
             newBlock = Block(transactions=pendingTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
             self.pendingTransactions=[]
@@ -84,47 +90,31 @@ class Blockchain():
             self.chain = self.chain[:issueBlock]
 
 
-    def validateChain(self):
-        result = True
-        issueBlock = 0
+    def isChainValid(self):
         allTransactions = {}
 
-        for i in range(len(self.chain)):
-            block = self.chain[i]
+        for blockNum in range(len(self.chain)):
+            block = self.chain[blockNum]
 
-            if block.hashVal != block.calculateHash() or (i < len(self.chain) - 1 and self.chain[i+1].previousHash != block.hashVal):
+            if block.hashVal != block.calculateHash() or (blockNum < len(self.chain) - 1 and self.chain[blockNum+1].previousHash != block.hashVal):
                 if self.debug:
                     print("block hash not matching!")
-                result = False
-                issueBlock = i
-                break
+                return False, blockNum
 
             for transaction in block.transactions:
-                if transaction.timestamp in allTransactions and transaction == allTransactions.get(transaction.timestamp):
+                if transaction.signature in allTransactions:
                     if self.debug:
                         print(f"Transaction already present \n{transaction}")
-                    result = False
-                    issueBlock = i
-                    break
+                    return False, blockNum
                 else:
-                    allTransactions[transaction.timestamp] = transaction
+                    allTransactions[transaction.signature] = transaction
 
-                    if transaction.fromAddress == "SYSTEM":
-                        if transaction.amount != self.minedCoinbase:
-                            if self.debug:
-                                print(f"transaction SYSTEM not matching! {transaction}")
-                            result = False
-                            issueBlock = i
-                            break
-
-                    elif not self.isTransactionValid(transaction=transaction):
+                    if not self.isTransactionValid(transaction=transaction):
                         if self.debug:
-                            print(f"Transaction not matching! {transaction}")
-                        result = False
-                        issueBlock = i
-                        break
+                            print(f"Transaction signature not matching! {transaction}")
+                        return False, blockNum
 
-        return result, issueBlock
+        return True, -1
 
 
     def getBalance(self, user):
