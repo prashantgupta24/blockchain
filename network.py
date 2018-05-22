@@ -2,7 +2,7 @@
 # load_dotenv()
 import json
 import rsa
-from flask import Flask, request, redirect, url_for
+from flask import Flask, request
 from core import Blockchain, Transaction
 
 app = Flask(__name__)
@@ -46,7 +46,6 @@ def addTransaction():
             result, message = blockchain.addTransaction(transaction=transaction)
 
             if result:
-                print()
                 finalMessage = message + " " + getBalance(data["fromAddress"])[0]
                 return finalMessage, 201
 
