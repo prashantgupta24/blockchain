@@ -12,13 +12,13 @@ class Transaction:
         self.signature = ""
 
     def __repr__(self):
-        return str(self.getData())
+        return json.dumps(self.getData(), indent = 2)
 
     def __eq__(self, other):
-        return self.timestamp == other.timestamp and self.fromAddress == other.fromAddress and self.toAddress == other.toAddress and self.amount == other.amount
+        return self.signature == other.signature
 
     def __hash__(self):
-        return hash(self.getData())
+        return hash(self.signature)
 
     def addSignature(self, signature):
         self.signature = signature
@@ -98,7 +98,7 @@ class Blockchain():
 
             newBlock = Block(transactions=pendingTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
-            self.pendingTransactions=[]
+            self.pendingTransactions = set()
         else:
             print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock} ...")
             if self.debug:
@@ -106,9 +106,8 @@ class Blockchain():
                 print(self.chain[issueBlock])
             self.chain = self.chain[:issueBlock]
 
-
     def isChainValid(self):
-        allTransactions = {}
+        allTransactions = set()
 
         for blockNum in range(len(self.chain)):
             block = self.chain[blockNum]
@@ -124,7 +123,7 @@ class Blockchain():
                         print(f"Transaction already present \n{transaction}")
                     return False, blockNum
                 else:
-                    allTransactions[transaction.signature] = transaction
+                    allTransactions.add(transaction.signature)
 
                     if not self.isTransactionValid(transaction=transaction):
                         if self.debug:
@@ -153,18 +152,18 @@ class Blockchain():
 
     def addTransaction(self, transaction):
         if not isinstance(transaction, Transaction):
-            print(f"Not a transaction object!\n{transaction}!\n")
-            return
+            return False, f"Not a transaction object!\n{transaction}!\n"
         if transaction in self.pendingTransactions:
-            print(f"Transaction already present!\n{transaction}!\n")
-            return
+            return False, f"Transaction already present!\n{transaction}!\n"
         if not self.isTransactionValid(transaction=transaction):
-            print(f"Incorrect signature for transaction\n{transaction}!\n")
-            return
-        if self.getBalance(transaction.fromAddress) >= transaction.amount:
-            self.pendingTransactions.append(transaction)
-        else:
-            print(f"Insufficient balance! You only have {self.getBalance(transaction.fromAddress)} coins but you are trying to send {transaction.amount}")
+            return False, f"Incorrect signature for transaction\n{transaction}!\n"
+
+        userBalance = self.getBalance(transaction.fromAddress)
+        if userBalance < transaction.amount:
+            return False, f"Insufficient balance! You only have {userBalance} coins but you are trying to send {transaction.amount}"
+
+        self.pendingTransactions.add(transaction)
+        return True, "Transaction added successfully!"
 
     @staticmethod
     def isTransactionValid(transaction):

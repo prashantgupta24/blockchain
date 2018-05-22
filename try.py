@@ -10,6 +10,15 @@ from core import Blockchain, Transaction
 
 # In[2]:
 
+def convertToPubKey(pub_key_str):
+    pubKeyStr = pub_key_str[pub_key_str.index("(")+1:pub_key_str.index(")")]
+    n, e = [int(key.strip()) for key in pubKeyStr.split(",")]
+    return rsa.PublicKey(n=n, e=e)
+
+def convertToPrivKey(priv_key_str):
+    privKeyStr = priv_key_str[priv_key_str.index("(")+1:priv_key_str.index(")")]
+    n, e, d, p, q = [int(key.strip()) for key in privKeyStr.split(",")]
+    return rsa.PrivateKey(n=n, e=e, d=d, p=p, q=q)
 
 myBlockchain = Blockchain()
 
@@ -29,22 +38,43 @@ nameMap = {"arya":pub_arya, "bran":pub_bran, "cersei":pub_cersei, "davos":pub_da
 
 myBlockchain.mineBlock(pub_arya)
 
-transaction = Transaction(fromAddress=pub_arya, toAddress=pub_bran, amount=30)
-signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_arya, "SHA-256")
+transaction = Transaction(fromAddress=convertToPubKey(str(pub_arya)), toAddress=convertToPubKey(str(pub_bran)), amount=30)
+signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(str(priv_arya)), "SHA-256")
 transaction.addSignature(signature=signature)
-myBlockchain.addTransaction(transaction=transaction)
+result, message = myBlockchain.addTransaction(transaction=transaction)
+
+print(message)
+
+transaction = Transaction(fromAddress=convertToPubKey(str(pub_arya)), toAddress=convertToPubKey(str(pub_bran)), amount=10)
+signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(str(priv_arya)), "SHA-256")
+transaction.addSignature(signature=signature)
+result, message = myBlockchain.addTransaction(transaction=transaction)
+
+print(message)
+
+result, message = myBlockchain.addTransaction(transaction=transaction)
+
+print(message)
+
+myBlockchain.mineBlock(pub_davos)
+myBlockchain.mineBlock(pub_elia)
+
+print(myBlockchain)
+
+for name in nameMap:
+    print(f"\nBalance for name {name} : {nameMap.get(name)} is {myBlockchain.getBalance(user=nameMap.get(name))}")
 
 
 #same timestamp, same transaction
-myBlockchain.addTransaction(transaction=transaction)
-myBlockchain.addTransaction(transaction=transaction)
-
-#same timestamp, same transaction
-transactions = list(myBlockchain.chain[1].transactions)
-transaction = transactions[0]
-transactions.append(transaction)
-transactions.append(transaction)
-transactions.append(transaction)
+# myBlockchain.addTransaction(transaction=transaction)
+# myBlockchain.addTransaction(transaction=transaction)
+#
+# #same timestamp, same transaction
+# transactions = list(myBlockchain.chain[1].transactions)
+# transaction = transactions[0]
+# transactions.append(transaction)
+# transactions.append(transaction)
+# transactions.append(transaction)
 #myBlockchain.chain[1].hashVal = myBlockchain.chain[1].calculateHash()
 
 
@@ -77,15 +107,6 @@ transactions.append(transaction)
 
 # myBlockchain.chain[1].transactions[0].amount=230
 # myBlockchain.chain[1].hashVal = myBlockchain.chain[2].calculateHash()
-
-myBlockchain.mineBlock(pub_davos)
-myBlockchain.mineBlock(pub_elia)
-
-print(myBlockchain)
-
-for name in nameMap:
-    print(f"\nBalance for name {name} : {nameMap.get(name)} is {myBlockchain.getBalance(user=nameMap.get(name))}")
-
 
 
 
