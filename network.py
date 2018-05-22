@@ -31,14 +31,13 @@ def getKeys():
 @app.route('/mine/<pubKeyStr>', methods=['GET'])
 def mineBlock(pubKeyStr):
     blockchain.mineBlock(user=convertToPubKey(pubKeyStr))
-    #return redirect(url_for('getBlockchain'))
     return "Block mined!", 201
 
 @app.route('/new/transaction', methods=['POST'])
 def addTransaction():
     data = request.get_json()
-    result, messageResponse = isDataValid(data)
-    if result:
+    valid, messageResponse = isDataValid(data)
+    if valid:
         try:
             transaction = Transaction(fromAddress=convertToPubKey(data["fromAddress"]), toAddress=convertToPubKey(data["toAddress"]), amount=int(data["amount"]))
             signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(data["priv_key"]), "SHA-256")

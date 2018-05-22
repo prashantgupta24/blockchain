@@ -71,7 +71,7 @@ class Blockchain():
         self.debug = True
         self.minedCoinbase = 50
         #TODO set mining difficulty dynamically
-        self.miningDifficulty = 10
+        self.miningDifficulty = 5
         genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
 
