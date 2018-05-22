@@ -71,9 +71,9 @@ class Block:
 class Blockchain():
     def __init__(self):
         self.pendingTransactions = set()
-        self.debug = True
+        self.debug = False
         self.minedCoinbase = 50
-        self.miningDifficulty = 2
+        self.miningDifficulty = 5
         genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
 

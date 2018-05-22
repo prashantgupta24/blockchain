@@ -17,7 +17,6 @@ else:
 def getBlockchain():
     return str(blockchain), 200
 
-
 @app.route('/balance/<pubKeyStr>', methods=['GET'])
 def getBalance(pubKeyStr):
     return "Coins left: " + str(blockchain.getBalance(user=convertToPubKey(pubKeyStr))), 200
