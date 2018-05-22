@@ -1,13 +1,17 @@
-# from dotenv import load_dotenv
-# load_dotenv()
+import shelve
 import json
 import rsa
 from flask import Flask, request
-from core import Blockchain, Transaction
+from core import Blockchain, Transaction, convertToPubKey, convertToPrivKey
 
 app = Flask(__name__)
 
-blockchain = Blockchain()
+blockchainDb = shelve.open("blockchainDb")
+
+if 'blockchain' in blockchainDb:
+    blockchain = blockchainDb['blockchain']
+else:
+    blockchain = Blockchain()
 
 @app.route('/blockchain', methods=['GET'])
 def getBlockchain():
@@ -31,6 +35,7 @@ def getKeys():
 @app.route('/mine/<pubKeyStr>', methods=['GET'])
 def mineBlock(pubKeyStr):
     blockchain.mineBlock(user=convertToPubKey(pubKeyStr))
+    blockchainDb['blockchain'] = blockchain
     return "Block mined!", 201
 
 @app.route('/new/transaction', methods=['POST'])
@@ -46,6 +51,7 @@ def addTransaction():
 
             if result:
                 finalMessage = message + " " + getBalance(data["fromAddress"])[0]
+                blockchainDb['blockchain'] = blockchain
                 return finalMessage, 201
 
             return message, 400
@@ -58,14 +64,6 @@ def addTransaction():
             return "Invalid key! Please check both public and private keys", 500
     else:
         return messageResponse, 500
-
-def convertToPubKey(pubKeyStr):
-    n, e = [int(key.strip()) for key in pubKeyStr.split(",")]
-    return rsa.PublicKey(n=n, e=e)
-
-def convertToPrivKey(privKeyStr):
-    n, e, d, p, q = [int(key.strip()) for key in privKeyStr.split(",")]
-    return rsa.PrivateKey(n=n, e=e, d=d, p=p, q=q)
 
 def isDataValid(jsonStr):
     pubKey = jsonStr["fromAddress"]

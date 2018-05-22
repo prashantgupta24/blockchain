@@ -3,8 +3,10 @@
 
 # In[1]:
 
+import shelve
 import rsa
 from core import Blockchain, Transaction
+
 
 # ### First step, let's create the blockchain object
 
@@ -20,7 +22,12 @@ def convertToPrivKey(priv_key_str):
     n, e, d, p, q = [int(key.strip()) for key in privKeyStr.split(",")]
     return rsa.PrivateKey(n=n, e=e, d=d, p=p, q=q)
 
-myBlockchain = Blockchain()
+blockchainDb = shelve.open("blockchainDb")
+
+if 'blockchain' in blockchainDb:
+    myBlockchain = blockchainDb['blockchain']
+else:
+    myBlockchain = Blockchain()
 
 
 # ### Next, let's add a few transactions to the blockchain
@@ -36,28 +43,28 @@ myBlockchain = Blockchain()
 
 nameMap = {"arya":pub_arya, "bran":pub_bran, "cersei":pub_cersei, "davos":pub_davos, "elia":pub_elia}
 
-myBlockchain.mineBlock(pub_arya)
-
-transaction = Transaction(fromAddress=convertToPubKey(str(pub_arya)), toAddress=convertToPubKey(str(pub_bran)), amount=30)
-signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(str(priv_arya)), "SHA-256")
-transaction.addSignature(signature=signature)
-result, message = myBlockchain.addTransaction(transaction=transaction)
-
-print(message)
-
-transaction = Transaction(fromAddress=convertToPubKey(str(pub_arya)), toAddress=convertToPubKey(str(pub_bran)), amount=10)
-signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(str(priv_arya)), "SHA-256")
-transaction.addSignature(signature=signature)
-result, message = myBlockchain.addTransaction(transaction=transaction)
-
-print(message)
-
-result, message = myBlockchain.addTransaction(transaction=transaction)
-
-print(message)
-
-myBlockchain.mineBlock(pub_davos)
-myBlockchain.mineBlock(pub_elia)
+# myBlockchain.mineBlock(pub_arya)
+#
+# transaction = Transaction(fromAddress=convertToPubKey(str(pub_arya)), toAddress=convertToPubKey(str(pub_bran)), amount=30)
+# signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(str(priv_arya)), "SHA-256")
+# transaction.addSignature(signature=signature)
+# result, message = myBlockchain.addTransaction(transaction=transaction)
+#
+# print(message)
+#
+# transaction = Transaction(fromAddress=convertToPubKey(str(pub_arya)), toAddress=convertToPubKey(str(pub_bran)), amount=10)
+# signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(str(priv_arya)), "SHA-256")
+# transaction.addSignature(signature=signature)
+# result, message = myBlockchain.addTransaction(transaction=transaction)
+#
+# print(message)
+#
+# result, message = myBlockchain.addTransaction(transaction=transaction)
+#
+# print(message)
+#
+# myBlockchain.mineBlock(pub_davos)
+# myBlockchain.mineBlock(pub_elia)
 
 print(myBlockchain)
 

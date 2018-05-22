@@ -1,7 +1,11 @@
+import os
 import hashlib
 import json
 import time
 import rsa
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Transaction:
     def __init__(self, fromAddress, toAddress, amount):
@@ -66,12 +70,10 @@ class Block:
 
 class Blockchain():
     def __init__(self):
-        [self.pub_blockchain, self.priv_blockchain]=rsa.newkeys(512)
         self.pendingTransactions = set()
         self.debug = True
         self.minedCoinbase = 50
-        #TODO set mining difficulty dynamically
-        self.miningDifficulty = 5
+        self.miningDifficulty = 2
         genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
 
@@ -89,8 +91,8 @@ class Blockchain():
     def mineBlock(self, user):
         isChainValid, issueBlock = self.isChainValid()
         if isChainValid:
-            miningTransaction = Transaction(fromAddress=self.pub_blockchain, toAddress=user, amount=self.minedCoinbase)
-            signature = rsa.sign(str(miningTransaction).encode(encoding='utf_8'), self.priv_blockchain, "SHA-256")
+            miningTransaction = Transaction(fromAddress=convertToPubKey(os.getenv("PUB_KEY")), toAddress=user, amount=self.minedCoinbase)
+            signature = rsa.sign(str(miningTransaction).encode(encoding='utf_8'), convertToPrivKey(os.getenv("PRIV_KEY")), "SHA-256")
             miningTransaction.addSignature(signature=signature)
 
             pendingTransactionsForBlock = list(self.pendingTransactions)
@@ -176,3 +178,11 @@ class Blockchain():
             return False
 
         return True
+
+def convertToPubKey(pubKeyStr):
+    n, e = [int(key.strip()) for key in pubKeyStr.split(",")]
+    return rsa.PublicKey(n=n, e=e)
+
+def convertToPrivKey(privKeyStr):
+    n, e, d, p, q = [int(key.strip()) for key in privKeyStr.split(",")]
+    return rsa.PrivateKey(n=n, e=e, d=d, p=p, q=q)
