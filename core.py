@@ -30,8 +30,8 @@ class Transaction:
     def getData(self):
         return {
             "Timestamp": self.timestamp,
-            "From_address": str(self.fromAddress),
-            "To_address": str(self.toAddress),
+            "FromAddress": str(self.fromAddress),
+            "ToAddress": str(self.toAddress),
             "Amount": self.amount
         }
 
@@ -49,8 +49,8 @@ class Block:
         blockData["Transactions"] = []
         for transaction in self.transactions:
             blockData["Transactions"].append(transaction.getData())
-        blockData["Previous hash"] = self.previousHash
-        blockData["My hash"] = self.hashVal
+        blockData["PreviousHash"] = self.previousHash
+        blockData["MyHash"] = self.hashVal
         return blockData
 
     def calculateHash(self):
@@ -73,19 +73,24 @@ class Blockchain():
         self.pendingTransactions = set()
         self.debug = False
         self.minedCoinbase = 50
-        self.miningDifficulty = 5
+        self.miningDifficulty = 2
         genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
+        self.nodes = set()
 
     def __repr__(self):
         return json.dumps(self.getData(), indent = 2)
 
     def getData(self):
         chainData = {}
-        chainData["lengthOfChain"] = len(self.chain)
+        chainData["LengthOfChain"] = len(self.chain)
+        chainData["Nodes"] = list(self.nodes)
         chainData["Blocks"] = {}
+        chainData["PendingTransactions"] = []
         for block in self.chain:
             chainData["Blocks"]["Block " + str(self.chain.index(block))] = block.getData()
+        for transaction in self.pendingTransactions:
+            chainData["PendingTransactions"].append(transaction.getData())
         return chainData
 
     def mineBlock(self, user):
