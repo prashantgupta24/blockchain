@@ -9,19 +9,23 @@ app = Flask(__name__)
 
 blockchainDb = shelve.open("blockchainDb")
 
-if 'blockchain' in blockchainDb:
+blockchain = Blockchain()
+
+if 'blockchain.chain' in blockchainDb:
     try:
-        blockchain = blockchainDb['blockchain']
+        blockchain.chain = blockchainDb['blockchain.chain']
+        blockchain.nodes = blockchainDb['blockchain.nodes']
+        blockchain.pendingTransactions = blockchainDb['blockchain.pendingTransactions']
     except Exception:
-        blockchain = Blockchain()
-else:
-    blockchain = Blockchain()
+        pass
 
 @app.route('/blockchain', methods=['GET'])
 def getBlockchain():
-    requestHost = str(request.host)
-    if requestHost.find("localhost") == -1 and request.host not in blockchain.nodes:
-        blockchain.nodes.add(request.host)
+    # requestHost = str(request.remote_addr)
+    # print(requestHost)
+    # print(dir(request))
+    # if request.host not in blockchain.nodes:
+    #     blockchain.nodes.add(request.host)
     return str(blockchain), 200
 
 @app.route('/blockchain/db')
@@ -38,44 +42,40 @@ def getBalance(pubKeyStr):
 @app.route('/mine/<pubKeyStr>', methods=['GET'])
 def mineBlock(pubKeyStr):
     blockchain.mineBlock(user=convertToPubKey(pubKeyStr))
-    blockchainDb['blockchain'] = blockchain
+    writeBlockchainToDb()
     return "Block mined!", 201
+
+@app.route('/blockchain/add/node', methods=['POST'])
+def addNodeToBlockchain():
+    data = request.get_json()
+    nodeAddress = data["MyAddress"]
+    blockchain.nodes.add(nodeAddress)
+    return "|".join(blockchain.nodes), 200
 
 @app.route('/blockchain/new/node', methods=['POST'])
 def addNewNode():
+    # nodes = data["nodes"]
+    # for node in nodes:
+    #     print(node)
     try:
-        # nodes = data["nodes"]
-        # for node in nodes:
+
+        # print(request.remote_addr)
+        # print(request.host)
+        data = request.get_json()
+        masterAddress = data["Master"]
+        nodeAddress = data["MyAddress"]
+        masterNodeList = requests.post(f'http://{masterAddress}/blockchain/add/node', json = {"MyAddress":nodeAddress})
+        print(masterNodeList.text.split("|"))
+        # for node in masterNodeList.text:
         #     print(node)
-        #print(request.remote_addr)
-        #print(request.host)
+        #     blockchain.nodes.add(node)
+        blockchain.nodes = set(masterNodeList.text.split("|"))
 
-        # masterNode = data["Master"]
-        # data = requests.get(f'http://{masterNode}/blockchain').json()
-        # blockchain.nodes = data["nodes"]
+        return "Nodes were updated!", 201
 
-        r = requests.get(f'http://localhost:8000/blockchain/db').content
-        filename = open("temp.db", "wb")
-        filename.write(r)
-        filename.close()
-        # with open(filename, 'wb') as fd:
-        #     for chunk in r.iter_content(chunk_size=128):
-        #         fd.write(chunk)
-
-        print(f"dir  {dir(r)}")
-
-        tempDb = shelve.open("temp")
-        if 'blockchain' in blockchainDb:
-            bb = tempDb['blockchain']
-        print(bb)
-    except KeyError as e:
-        print(e)
-        return "Missing a field! Please check all required fields are present", 500
     except Exception as e:
-        raise e
-        return "Invalid", 500
-
-    return "Nodes were updated!", 201
+        print(e)
+        return "Invalid json!", 500
 
 @app.route('/new/keys', methods=['GET'])
 def getKeys():
@@ -100,8 +100,9 @@ def addTransaction():
             result, message = blockchain.addTransaction(transaction=transaction)
 
             if result:
-                finalMessage = message + " " + getBalance(data["fromAddress"])[0]
-                blockchainDb['blockchain'] = blockchain
+                finalMessage = message + " " + getBalance(data["FromAddress"])[0]
+                writeBlockchainToDb()
+                propagateTransactionToAllNodes()
                 return finalMessage, 201
 
             return message, 400
@@ -129,8 +130,8 @@ def runConsensusAlgorithm():
             if chainLength > len(blockchain.chain):
                 #blockchain.chain =
                 return "Consensus completed! Chain updated", 201
-            else:
-                return "Consensus completed! You have the longest chain", 200
+
+            return "Consensus completed! You have the longest chain", 200
 
     except KeyError as e:
         print(e)
@@ -140,11 +141,11 @@ def runConsensusAlgorithm():
 
 def isDataValid(jsonStr):
 
-    pubKey = jsonStr["fromAddress"]
+    pubKey = jsonStr["FromAddress"]
     if pubKey.count(",") != 1:
         return False, "Invalid sender public key!"
 
-    pubKey = jsonStr["toAddress"]
+    pubKey = jsonStr["ToAddress"]
     if pubKey.count(",") != 1:
         return False, "Invalid receiver public key!"
 
@@ -152,7 +153,40 @@ def isDataValid(jsonStr):
     if privKey.count(",") != 4:
         return False, "Invalid private key!"
 
-    if not str.isdigit(jsonStr["amount"]) or int(jsonStr["amount"]) <= 0:
+    if not str.isdigit(jsonStr["Amount"]) or int(jsonStr["Amount"]) <= 0:
         return False, "Invalid amount"
 
     return True, "Valid"
+
+def writeBlockchainToDb():
+    blockchainDb['blockchain.chain'] = blockchain.chain
+    blockchainDb['blockchain.nodes'] = blockchain.nodes
+    blockchainDb['blockchain.pendingTransactions'] = blockchain.pendingTransactions
+
+def propagateTransactionToAllNodes():
+
+            # try:
+
+
+            # # r = requests.get(f'http://localhost:8000/blockchain/db').content
+            # filename = open("temp.db", "wb")
+            # filename.write(r)
+            # filename.close()
+            # # with open(filename, 'wb') as fd:
+            # #     for chunk in r.iter_content(chunk_size=128):
+            # #         fd.write(chunk)
+            #
+            # print(f"dir  {dir(r)}")
+            #
+            # tempDb = shelve.open("temp")
+            # if 'blockchain' in blockchainDb:
+            #     bb = tempDb['blockchain']
+            # print(bb)
+            #
+            # except KeyError as e:
+            #     print(e)
+            #     return "Missing a field! Please check all required fields are present", 500
+            # except Exception as e:
+            #     print(e)
+            #     return "Invalid", 500
+    pass

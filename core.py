@@ -35,7 +35,6 @@ class Transaction:
             "Amount": self.amount
         }
 
-
 class Block:
     def __init__(self, transactions, previousHash, miningDifficulty):
         self.transactions=transactions
@@ -70,13 +69,13 @@ class Block:
 
 class Blockchain():
     def __init__(self):
-        self.pendingTransactions = set()
         self.debug = False
         self.minedCoinbase = 50
         self.miningDifficulty = 2
         genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
         self.nodes = set()
+        self.pendingTransactions = set()
 
     def __repr__(self):
         return json.dumps(self.getData(), indent = 2)
