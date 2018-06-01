@@ -1,7 +1,11 @@
+import os
 import hashlib
 import json
 import time
 import rsa
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Transaction:
     def __init__(self, fromAddress, toAddress, amount):
@@ -12,13 +16,13 @@ class Transaction:
         self.signature = ""
 
     def __repr__(self):
-        return str(self.getData())
+        return json.dumps(self.getData(), indent = 2)
 
     def __eq__(self, other):
-        return self.timestamp == other.timestamp and self.fromAddress == other.fromAddress and self.toAddress == other.toAddress and self.amount == other.amount
+        return self.signature == other.signature
 
     def __hash__(self):
-        return hash(self.getData())
+        return hash(self.signature)
 
     def addSignature(self, signature):
         self.signature = signature
@@ -26,11 +30,10 @@ class Transaction:
     def getData(self):
         return {
             "Timestamp": self.timestamp,
-            "From_address": str(self.fromAddress),
-            "To_address": str(self.toAddress),
+            "FromAddress": str(self.fromAddress),
+            "ToAddress": str(self.toAddress),
             "Amount": self.amount
         }
-
 
 class Block:
     def __init__(self, transactions, previousHash, miningDifficulty):
@@ -45,8 +48,8 @@ class Block:
         blockData["Transactions"] = []
         for transaction in self.transactions:
             blockData["Transactions"].append(transaction.getData())
-        blockData["Previous hash"] = self.previousHash
-        blockData["My hash"] = self.hashVal
+        blockData["PreviousHash"] = self.previousHash
+        blockData["MyHash"] = self.hashVal
         return blockData
 
     def calculateHash(self):
@@ -66,31 +69,34 @@ class Block:
 
 class Blockchain():
     def __init__(self):
-        [self.pub_blockchain, self.priv_blockchain]=rsa.newkeys(512)
-        self.pendingTransactions = set()
-        self.debug = True
+        self.debug = False
         self.minedCoinbase = 50
-        #TODO set mining difficulty dynamically
-        self.miningDifficulty = 4
+        self.miningDifficulty = 2
         genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
+        self.nodes = set()
+        self.pendingTransactions = set()
 
     def __repr__(self):
         return json.dumps(self.getData(), indent = 2)
 
     def getData(self):
         chainData = {}
-        chainData["lengthOfChain"] = len(self.chain)
+        chainData["LengthOfChain"] = len(self.chain)
+        chainData["Nodes"] = list(self.nodes)
         chainData["Blocks"] = {}
+        chainData["PendingTransactions"] = []
         for block in self.chain:
             chainData["Blocks"]["Block " + str(self.chain.index(block))] = block.getData()
+        for transaction in self.pendingTransactions:
+            chainData["PendingTransactions"].append(transaction.getData())
         return chainData
 
     def mineBlock(self, user):
         isChainValid, issueBlock = self.isChainValid()
         if isChainValid:
-            miningTransaction = Transaction(fromAddress=self.pub_blockchain, toAddress=user, amount=self.minedCoinbase)
-            signature = rsa.sign(str(miningTransaction).encode(encoding='utf_8'), self.priv_blockchain, "SHA-256")
+            miningTransaction = Transaction(fromAddress=convertToPubKey(os.getenv("PUB_KEY")), toAddress=user, amount=self.minedCoinbase)
+            signature = rsa.sign(str(miningTransaction).encode(encoding='utf_8'), convertToPrivKey(os.getenv("PRIV_KEY")), "SHA-256")
             miningTransaction.addSignature(signature=signature)
 
             pendingTransactionsForBlock = list(self.pendingTransactions)
@@ -98,7 +104,7 @@ class Blockchain():
 
             newBlock = Block(transactions=pendingTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
-            self.pendingTransactions=[]
+            self.pendingTransactions = set()
         else:
             print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock} ...")
             if self.debug:
@@ -106,9 +112,8 @@ class Blockchain():
                 print(self.chain[issueBlock])
             self.chain = self.chain[:issueBlock]
 
-
     def isChainValid(self):
-        allTransactions = {}
+        allTransactions = set()
 
         for blockNum in range(len(self.chain)):
             block = self.chain[blockNum]
@@ -124,7 +129,7 @@ class Blockchain():
                         print(f"Transaction already present \n{transaction}")
                     return False, blockNum
                 else:
-                    allTransactions[transaction.signature] = transaction
+                    allTransactions.add(transaction.signature)
 
                     if not self.isTransactionValid(transaction=transaction):
                         if self.debug:
@@ -153,18 +158,18 @@ class Blockchain():
 
     def addTransaction(self, transaction):
         if not isinstance(transaction, Transaction):
-            print(f"Not a transaction object!\n{transaction}!\n")
-            return
+            return False, f"Not a transaction object!\n{transaction}!\n"
         if transaction in self.pendingTransactions:
-            print(f"Transaction already present!\n{transaction}!\n")
-            return
+            return False, f"Transaction already present!\n{transaction}!\n"
         if not self.isTransactionValid(transaction=transaction):
-            print(f"Incorrect signature for transaction\n{transaction}!\n")
-            return
-        if self.getBalance(transaction.fromAddress) >= transaction.amount:
-            self.pendingTransactions.append(transaction)
-        else:
-            print(f"Insufficient balance! You only have {self.getBalance(transaction.fromAddress)} coins but you are trying to send {transaction.amount}")
+            return False, f"Incorrect signature for transaction\n{transaction}!\n"
+
+        userBalance = self.getBalance(transaction.fromAddress)
+        if userBalance < transaction.amount:
+            return False, f"Insufficient balance! You only have {userBalance} coins but you are trying to send {transaction.amount}"
+
+        self.pendingTransactions.add(transaction)
+        return True, "Transaction added successfully!"
 
     @staticmethod
     def isTransactionValid(transaction):
@@ -177,3 +182,11 @@ class Blockchain():
             return False
 
         return True
+
+def convertToPubKey(pubKeyStr):
+    n, e = [int(key.strip()) for key in pubKeyStr.split(",")]
+    return rsa.PublicKey(n=n, e=e)
+
+def convertToPrivKey(privKeyStr):
+    n, e, d, p, q = [int(key.strip()) for key in privKeyStr.split(",")]
+    return rsa.PrivateKey(n=n, e=e, d=d, p=p, q=q)
