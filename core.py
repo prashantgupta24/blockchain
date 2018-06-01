@@ -16,7 +16,13 @@ class Transaction:
         self.signature = ""
 
     def __repr__(self):
-        return json.dumps(self.getData(), indent = 2)
+        data = {
+            "Timestamp": self.timestamp,
+            "FromAddress": str(self.fromAddress),
+            "ToAddress": str(self.toAddress),
+            "Amount": self.amount
+        }
+        return json.dumps(data, indent = 2)
 
     def __eq__(self, other):
         return self.signature == other.signature
@@ -32,7 +38,8 @@ class Transaction:
             "Timestamp": self.timestamp,
             "FromAddress": str(self.fromAddress),
             "ToAddress": str(self.toAddress),
-            "Amount": self.amount
+            "Amount": self.amount,
+            "Signature": self.signature
         }
 
 class Block:
@@ -97,7 +104,7 @@ class Blockchain():
         if isChainValid:
             miningTransaction = Transaction(fromAddress=convertToPubKey(os.getenv("PUB_KEY")), toAddress=user, amount=self.minedCoinbase)
             signature = rsa.sign(str(miningTransaction).encode(encoding='utf_8'), convertToPrivKey(os.getenv("PRIV_KEY")), "SHA-256")
-            miningTransaction.addSignature(signature=signature)
+            miningTransaction.addSignature(signature=signature.hex())
 
             pendingTransactionsForBlock = list(self.pendingTransactions)
             pendingTransactionsForBlock.insert(0, miningTransaction)
@@ -177,8 +184,9 @@ class Blockchain():
             return False
 
         try:
-            rsa.verify(str(transaction).encode(encoding='utf_8'), transaction.signature, transaction.fromAddress)
+            rsa.verify(str(transaction).encode(encoding='utf_8'), bytes.fromhex(transaction.signature), transaction.fromAddress)
         except rsa.VerificationError:
+            print(f"signature not matching!")
             return False
 
         return True

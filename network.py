@@ -21,11 +21,6 @@ if 'blockchain.chain' in blockchainDb:
 
 @app.route('/blockchain', methods=['GET'])
 def getBlockchain():
-    # requestHost = str(request.remote_addr)
-    # print(requestHost)
-    # print(dir(request))
-    # if request.host not in blockchain.nodes:
-    #     blockchain.nodes.add(request.host)
     return str(blockchain), 200
 
 @app.route('/blockchain/db')
@@ -96,7 +91,7 @@ def addTransaction():
         if valid:
             transaction = Transaction(fromAddress=convertToPubKey(data["FromAddress"]), toAddress=convertToPubKey(data["ToAddress"]), amount=int(data["Amount"]))
             signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(data["priv_key"]), "SHA-256")
-            transaction.addSignature(signature=signature)
+            transaction.addSignature(signature=signature.hex())
             result, message = blockchain.addTransaction(transaction=transaction)
 
             if result:
@@ -159,9 +154,11 @@ def isDataValid(jsonStr):
     return True, "Valid"
 
 def writeBlockchainToDb():
+    blockchainDb = shelve.open("blockchainDb")
     blockchainDb['blockchain.chain'] = blockchain.chain
     blockchainDb['blockchain.nodes'] = blockchain.nodes
     blockchainDb['blockchain.pendingTransactions'] = blockchain.pendingTransactions
+    blockchainDb.close()
 
 def propagateTransactionToAllNodes():
 
