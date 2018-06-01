@@ -45,12 +45,30 @@ def mineBlock(pubKeyStr):
     writeBlockchainToDb()
     return "Block mined!", 201
 
-@app.route('/blockchain/add/node', methods=['POST'])
+@app.route('/blockchain/internal/add/node', methods=['POST'])
 def addNodeToBlockchain():
     data = request.get_json()
     nodeAddress = data["MyAddress"]
     blockchain.nodes.add(nodeAddress)
+    writeBlockchainToDb()
     return "|".join(blockchain.nodes), 200
+
+@app.route('/blockchain/internal/add/transaction', methods=['POST'])
+def addTransactionToPending():
+    r = request.get_data()
+    #print(r)
+    filename = open("temp_pending.db", "wb")
+    filename.write(r)
+    filename.close()
+
+    tempDb = shelve.open("temp_pending")
+    if 'blockchain.pendingTransactions' in tempDb:
+        try:
+            blockchain.pendingTransactions = tempDb['blockchain.pendingTransactions']
+        except Exception:
+            return "Error while propagating transactions!", 500
+
+    return "Added", 200
 
 @app.route('/blockchain/new/node', methods=['POST'])
 def addNewNode():
@@ -64,12 +82,14 @@ def addNewNode():
         data = request.get_json()
         masterAddress = data["Master"]
         nodeAddress = data["MyAddress"]
-        masterNodeList = requests.post(f'http://{masterAddress}/blockchain/add/node', json = {"MyAddress":nodeAddress})
-        print(masterNodeList.text.split("|"))
+        requests.post(f'http://{masterAddress}/blockchain/internal/add/node', json = {"MyAddress":nodeAddress})
+        #print(masterNodeList.text.split("|"))
         # for node in masterNodeList.text:
         #     print(node)
         #     blockchain.nodes.add(node)
-        blockchain.nodes = set(masterNodeList.text.split("|"))
+
+        #blockchain.nodes = set(masterNodeList.text.split("|"))
+        copyDataFromMaster(masterAddress=masterAddress)
 
         return "Nodes were updated!", 201
 
@@ -159,34 +179,55 @@ def isDataValid(jsonStr):
     return True, "Valid"
 
 def writeBlockchainToDb():
+    blockchainDb = shelve.open("blockchainDb")
     blockchainDb['blockchain.chain'] = blockchain.chain
     blockchainDb['blockchain.nodes'] = blockchain.nodes
     blockchainDb['blockchain.pendingTransactions'] = blockchain.pendingTransactions
+    blockchainDb.close()
 
 def propagateTransactionToAllNodes():
+    try:
+        pendingTransactionsDB = shelve.open("pendingTransactionsDb")
+        pendingTransactionsDB['pendingTransactions'] = blockchain.pendingTransactions
+        data = open('pendingTransactionsDb.db', 'rb').read()
+        for node in blockchain.nodes:
+            requests.post(f'http://{node}/blockchain/internal/add/transaction', data = data)
 
-            # try:
+        return "Done!", 200
 
+    except KeyError as e:
+        print(e)
+        return "Missing a field! Please check all required fields are present", 500
+    except Exception as e:
+        print(e)
+        return "Invalid", 500
 
-            # # r = requests.get(f'http://localhost:8000/blockchain/db').content
-            # filename = open("temp.db", "wb")
-            # filename.write(r)
-            # filename.close()
-            # # with open(filename, 'wb') as fd:
-            # #     for chunk in r.iter_content(chunk_size=128):
-            # #         fd.write(chunk)
-            #
-            # print(f"dir  {dir(r)}")
-            #
-            # tempDb = shelve.open("temp")
-            # if 'blockchain' in blockchainDb:
-            #     bb = tempDb['blockchain']
-            # print(bb)
-            #
-            # except KeyError as e:
-            #     print(e)
-            #     return "Missing a field! Please check all required fields are present", 500
-            # except Exception as e:
-            #     print(e)
-            #     return "Invalid", 500
-    pass
+def copyDataFromMaster(masterAddress):
+    try:
+        r = requests.get(f'http://{masterAddress}/blockchain/db').content
+        filename = open("temp.db", "wb")
+        filename.write(r)
+        filename.close()
+        # with open(filename, 'wb') as fd:
+        #     for chunk in r.iter_content(chunk_size=128):
+        #         fd.write(chunk)
+
+        #print(f"dir  {dir(r)}")
+        tempDb = shelve.open("temp")
+        if 'blockchain.chain' in tempDb:
+            print("inside")
+            try:
+                blockchain.chain = tempDb['blockchain.chain']
+                blockchain.nodes = tempDb['blockchain.nodes']
+                blockchain.pendingTransactions = tempDb['blockchain.pendingTransactions']
+            except Exception:
+                return "Error"
+
+        return "Success!"
+
+    except KeyError as e:
+        print(e)
+        return "Missing a field! Please check all required fields are present", 500
+    except Exception as e:
+        print(e)
+        return "Invalid", 500

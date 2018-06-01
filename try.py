@@ -6,7 +6,9 @@
 import shelve
 import rsa
 from core import Blockchain, Transaction
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # ### First step, let's create the blockchain object
 
@@ -43,10 +45,20 @@ else:
 
 nameMap = {"arya":pub_arya, "bran":pub_bran, "cersei":pub_cersei, "davos":pub_davos, "elia":pub_elia}
 
-# myBlockchain.mineBlock(pub_arya)
-#
-# transaction = Transaction(fromAddress=convertToPubKey(str(pub_arya)), toAddress=convertToPubKey(str(pub_bran)), amount=30)
-# signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(str(priv_arya)), "SHA-256")
+#myBlockchain.mineBlock(pub_arya)
+
+transaction = Transaction(fromAddress=pub_arya, toAddress=pub_bran, amount=30)
+signature = rsa.sign(str(transaction).encode(encoding='utf_8'), priv_arya, "SHA-256")
+transaction.addSignature(signature=signature)
+print(signature.hex())
+print()
+#print(signature.decode(encoding='utf_8'))
+# sig1 = b"\x1a\xeb\x1b\x15\x1f\xa9\xb9\xf1\xe7\xcc\x84\x84)8qd\x8b\x01\xa7\x84\xd0\x15%\xb1mLyb|\xf6\xff'2%\xda&\xa3\x94\x18a\x0c\x10\x98\x1a\n\xa5\x81Ga\x986%\xf0<\x98&\xa6\x0e\xa1H\xc6\xf0\x0b&"
+#sig1 = signature.hex()
+sig1 = "04711413f01b50ac0e6774dffb8111f3626433d1a135b3f01ff51d6147fe02e490a851a2bcda4284c2d927c5e8aeab279f5e5e534c97ddcaaf28aed07ab029fc"
+print(sig1)
+#print(bytes.fromhex(sig1))
+rsa.verify(str(transaction).encode(encoding='utf_8'), bytes.fromhex(sig1), transaction.fromAddress)
 # transaction.addSignature(signature=signature)
 # result, message = myBlockchain.addTransaction(transaction=transaction)
 #
@@ -66,10 +78,10 @@ nameMap = {"arya":pub_arya, "bran":pub_bran, "cersei":pub_cersei, "davos":pub_da
 # myBlockchain.mineBlock(pub_davos)
 # myBlockchain.mineBlock(pub_elia)
 
-print(myBlockchain)
-
-for name in nameMap:
-    print(f"\nBalance for name {name} : {nameMap.get(name)} is {myBlockchain.getBalance(user=nameMap.get(name))}")
+# print(myBlockchain)
+#
+# for name in nameMap:
+#     print(f"\nBalance for name {name} : {nameMap.get(name)} is {myBlockchain.getBalance(user=nameMap.get(name))}")
 
 
 #same timestamp, same transaction
