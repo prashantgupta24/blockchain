@@ -43,12 +43,15 @@ class Transaction:
         }
 
 class Block:
-    def __init__(self, transactions, previousHash, miningDifficulty):
+    def __init__(self, transactions, previousHash, miningDifficulty, nonce=0, hashVal=None):
         self.transactions=transactions
         self.previousHash=previousHash
-        self.nonce = 0
+        self.nonce = nonce
         self.miningDifficulty = miningDifficulty
-        self.hashVal=self.calculateHash()
+        if not hashVal:
+            self.hashVal=self.calculateHash()
+        else:
+            self.hashVal = hashVal
 
     def getData(self):
         blockData = {}
@@ -57,6 +60,7 @@ class Block:
             blockData["Transactions"].append(transaction.getData())
         blockData["PreviousHash"] = self.previousHash
         blockData["MyHash"] = self.hashVal
+        blockData["Nonce"] = self.nonce
         return blockData
 
     def calculateHash(self):
@@ -72,6 +76,7 @@ class Block:
             hashVal = hashlib.sha256(json.dumps(data, sort_keys=True).encode())
             hexdigest = hashVal.hexdigest()
 
+        self.nonce = data["nonce"]
         return str(hashVal.hexdigest())
 
 class Blockchain():
@@ -181,6 +186,7 @@ class Blockchain():
     @staticmethod
     def isTransactionValid(transaction):
         if transaction.signature == "":
+            print("signature empty")
             return False
 
         try:
