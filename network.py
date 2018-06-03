@@ -26,13 +26,6 @@ blockchainNetwork = BlockchainNetwork()
 @app.route('/blockchain', methods=['GET'])
 def getBlockchain():
     return str(blockchainNetwork.blockchain), 200
-#
-# @app.route('/blockchain/db')
-# def blockchainDBFile():
-#     try:
-#         return send_file('blockchainDb.db')
-#     except Exception as e:
-#         return str(e)
 
 @app.route('/balance/<pubKeyStr>', methods=['GET'])
 def getBalance(pubKeyStr):
@@ -44,34 +37,23 @@ def mineBlock(pubKeyStr):
     writeBlockchainToDb()
     return "Block mined!", 201
 
-# @app.route('/blockchain/new/node', methods=['POST'])
-# def addNodeToBlockchain():
-#     data = request.get_json()
-#     nodeAddress = data["MyAddress"]
-#     blockchain.nodes.add(nodeAddress)
-#     runConsensusAlgorithm()
-#     return "Node added!", 201
-
 @app.route('/blockchain/internal/add/node', methods=['POST'])
 def addNodeToBlockchain():
     data = request.get_json()
     nodeAddress = data["MyAddress"]
     blockchainNetwork.blockchain.nodes.add(nodeAddress)
     writeBlockchainToDb()
-    #return "|".join(blockchain.nodes), 200
     return "", 201
 
-@app.route('/blockchain/new/node', methods=['POST'])
+@app.route('/new/node', methods=['POST'])
 def addNewNode():
     try:
         data = request.get_json()
         masterAddress = data["Master"]
         nodeAddress = data["MyAddress"]
-        #masterNodeList = requests.post(f'http://{masterAddress}/blockchain/internal/add/node', json = {"MyAddress":nodeAddress})
-        # print(masterNodeList.text.split("|"))
-        # blockchain.nodes = set(masterNodeList.text.split("|"))
         requests.post(f'http://{masterAddress}/blockchain/internal/add/node', json = {"MyAddress":nodeAddress})
         result, blockchainNetwork.blockchain = getBlockchainDataFromJson(requests.get(f'http://{masterAddress}/blockchain').json())
+        writeBlockchainToDb()
         return result, 201
 
     except Exception as e:
@@ -92,7 +74,11 @@ def getKeys():
 
 @app.route('/new/signedTransaction', methods=['POST'])
 def addNewSignedTransaction():
-    pass
+    data = request.get_json()
+    print(data["Signature"])
+    transaction = deconstructTransactionFromJson(data)
+    blockchainNetwork.blockchain.addTransaction(transaction)
+    return "Success!", 201
 
 @app.route('/new/transaction', methods=['POST'])
 def addTransaction():
@@ -101,14 +87,16 @@ def addTransaction():
         valid, messageResponse = isDataValid(data)
 
         if valid:
-            transaction = createTransaction(fromAddress=convertToPubKey(data["FromAddress"]), toAddress=convertToPubKey(data["ToAddress"]), amount=int(data["Amount"]), privateKey=convertToPrivKey(data["priv_key"]))
+            transaction = Transaction(fromAddress=convertToPubKey(data["FromAddress"]), toAddress=convertToPubKey(data["ToAddress"]), amount=int(data["Amount"]))
+            signature = rsa.sign(str(transaction).encode(encoding='utf_8'), convertToPrivKey(data["priv_key"]), "SHA-256")
+            transaction.addSignature(signature=signature.hex())
 
             result, message = blockchainNetwork.blockchain.addTransaction(transaction=transaction)
 
             if result:
                 finalMessage = message + " " + getBalance(data["FromAddress"])[0]
                 writeBlockchainToDb()
-                propagateTransactionToAllNodes()
+                propagateTransactionToAllNodes(transaction=transaction)
                 return finalMessage, 201
 
             return message, 400
@@ -171,14 +159,14 @@ def writeBlockchainToDb():
     blockchainNetwork.blockchainDb['blockchain.pendingTransactions'] = blockchainNetwork.blockchain.pendingTransactions
     blockchainNetwork.blockchainDb.close()
 
+def deconstructTransactionFromJson(transactionData):
+    fromAddress = transactionData["FromAddress"][transactionData["FromAddress"].index("(")+1:transactionData["FromAddress"].index(")")]
+    toAddress = transactionData["ToAddress"][transactionData["ToAddress"].index("(")+1:transactionData["ToAddress"].index(")")]
+    transaction = Transaction(fromAddress=convertToPubKey(fromAddress), toAddress=convertToPubKey(toAddress), amount=int(transactionData["Amount"]), signature=transactionData["Signature"], timestamp=transactionData["Timestamp"])
+    return transaction
+
 def getBlockchainDataFromJson(jsonData):
     newBlockChain = Blockchain()
-
-    def deconstructTransactionFromJson(transactionData):
-        fromAddress = transactionData["FromAddress"][transactionData["FromAddress"].index("(")+1:transactionData["FromAddress"].index(")")]
-        toAddress = transactionData["ToAddress"][transactionData["ToAddress"].index("(")+1:transactionData["ToAddress"].index(")")]
-        transaction = createTransaction(fromAddress=convertToPubKey(fromAddress), toAddress=convertToPubKey(toAddress), amount=int(transactionData["Amount"]), signature=transactionData["Signature"], timestamp=transactionData["Timestamp"])
-        return transaction
 
     try:
         newBlockChain.chain = []
@@ -197,8 +185,7 @@ def getBlockchainDataFromJson(jsonData):
         for transactionData in pendingTransactions:
             newBlockChain.pendingTransactions.add(deconstructTransactionFromJson(transactionData))
 
-        newBlockChain.nodes = jsonData["Nodes"]
-        print(newBlockChain)
+        newBlockChain.nodes = set(jsonData["Nodes"])
 
         result, blockNum = newBlockChain.isChainValid()
         if result:
@@ -211,49 +198,6 @@ def getBlockchainDataFromJson(jsonData):
 
     return "Error fetching from Master!", Blockchain()
 
-def createTransaction(fromAddress, toAddress, amount, timestamp=None, signature=None, privateKey=None):
-    transaction = Transaction(fromAddress=fromAddress, toAddress=toAddress, amount=amount)
-    if not signature:
-        signature = rsa.sign(str(transaction).encode(encoding='utf_8'), privateKey, "SHA-256")
-        transaction.addSignature(signature=signature.hex())
-    else:
-        if isinstance(signature, str):
-            transaction.addSignature(signature=signature)
-        elif isinstance(signature, bytes):
-            transaction.addSignature(signature=signature.hex())
-    if timestamp:
-        if isinstance(timestamp, str):
-            transaction.timestamp = float(timestamp)
-        elif isinstance(timestamp, float):
-            transaction.timestamp = timestamp
-
-    return transaction
-
-def propagateTransactionToAllNodes():
-    # Post transaction to all nodes
-
-            # try:
-
-
-            # # r = requests.get(f'http://localhost:8000/blockchain/db').content
-            # filename = open("temp.db", "wb")
-            # filename.write(r)
-            # filename.close()
-            # # with open(filename, 'wb') as fd:
-            # #     for chunk in r.iter_content(chunk_size=128):
-            # #         fd.write(chunk)
-            #
-            # print(f"dir  {dir(r)}")
-            #
-            # tempDb = shelve.open("temp")
-            # if 'blockchain' in blockchainDb:
-            #     bb = tempDb['blockchain']
-            # print(bb)
-            #
-            # except KeyError as e:
-            #     print(e)
-            #     return "Missing a field! Please check all required fields are present", 500
-            # except Exception as e:
-            #     print(e)
-            #     return "Invalid", 500
-    pass
+def propagateTransactionToAllNodes(transaction):
+    for node in blockchainNetwork.blockchain.nodes:
+        requests.post(f'http://{node}/new/signedTransaction', json = json.loads(json.dumps(transaction.getData())))

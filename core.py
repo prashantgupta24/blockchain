@@ -8,12 +8,29 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Transaction:
-    def __init__(self, fromAddress, toAddress, amount):
+    def __init__(self, fromAddress, toAddress, amount, timestamp=None, signature=None):
         self.fromAddress = fromAddress
         self.toAddress = toAddress
         self.amount = amount
-        self.timestamp = time.time()
-        self.signature = ""
+        if timestamp:
+            if isinstance(timestamp, str):
+                self.timestamp = float(timestamp)
+            elif isinstance(timestamp, float):
+                self.timestamp = timestamp
+            else:
+                self.timestamp = time.time()
+        else:
+            self.timestamp = time.time()
+
+        if signature:
+            if isinstance(signature, str):
+                self.signature = signature
+            elif isinstance(signature, bytes):
+                self.signature =signature.hex()
+            else:
+                self.signature = ""
+        else:
+            self.signature = ""
 
     def __repr__(self):
         data = {
