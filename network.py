@@ -9,6 +9,7 @@ class BlockchainNetwork():
     def __init__(self):
         self.blockchainDb = shelve.open("blockchainDb")
         self.blockchain = Blockchain()
+        self.debug = True
 
         if 'blockchain.chain' in self.blockchainDb:
             try:
@@ -34,6 +35,9 @@ def getBalance(pubKeyStr):
 @app.route('/mine/<pubKeyStr>', methods=['GET'])
 def mineBlock(pubKeyStr):
     blockchainNetwork.blockchain.mineBlock(user=convertToPubKey(pubKeyStr))
+    result, message = runConsensusAlgorithm()
+    if blockchainNetwork.debug:
+        print(f"Result from consensus is {result} with message {message}")
     writeBlockchainToDb()
     return "Block mined!", 201
 
@@ -52,13 +56,15 @@ def addNewNode():
         masterAddress = data["Master"]
         nodeAddress = data["MyAddress"]
         requests.post(f'http://{masterAddress}/blockchain/internal/add/node', json = {"MyAddress":nodeAddress})
-        result, blockchainNetwork.blockchain = getBlockchainDataFromJson(requests.get(f'http://{masterAddress}/blockchain').json())
+        (result, blockchainNetwork.blockchain) = getBlockchainDataFromJson(requests.get(f'http://{masterAddress}/blockchain').json())
         writeBlockchainToDb()
-        return result, 201
+        if not result:
+            return "Error fetching from master!", 404
+        return "Your node was updated!", 201
 
     except Exception as e:
-        #print(e)
-        raise e
+        print(e)
+        #raise e
         return "Invalid json!", 500
 
 @app.route('/new/keys', methods=['GET'])
@@ -113,25 +119,52 @@ def addTransaction():
         print(e)
         return "Missing a field! Please check all required fields are present", 500
 
-#@app.route('/blockchain/consensus', methods=['GET'])
 def runConsensusAlgorithm():
     try:
-        #data = request.get_json()
+        isMyChainLongest = True
+        longestChainLength = len(blockchainNetwork.blockchain.chain)
+        longestChainData = ""
+        finalMessage = "Consensus completed!"
+
         for node in blockchainNetwork.blockchain.nodes:
             data = requests.get(f'http://{node}/blockchain').json()
             chainLength = data["LengthOfChain"]
 
-            if chainLength > len(blockchainNetwork.blockchain.chain):
-                #blockchain = getBlockchainDataFromJson()
-                return "Consensus completed! Chain updated", 201
+            if blockchainNetwork.debug:
+                print(f"Chainlength for {node} was {chainLength}")
+            if chainLength >= longestChainLength:
+                (result, newBlockChain) = getBlockchainDataFromJson(data)
+                if result:
+                    longestChainLength = chainLength
+                    longestChainData = newBlockChain
+                    isMyChainLongest = False
 
-            return "Consensus completed! You have the longest chain", 200
+        if not isMyChainLongest:
+            allTransactions = set()
+            for block in longestChainData.chain:
+                for transaction in block.transactions:
+                    allTransactions.add(transaction.signature)
+
+            transactionsNotMined = set()
+            for transaction in blockchainNetwork.blockchain.pendingTransactions:
+                print(f"pending transactions : {transaction.signature}")
+                if transaction.signature not in allTransactions:
+                    transactionsNotMined.add(transaction)
+
+            if blockchainNetwork.debug:
+                print(f"All transactions not mined are {transactionsNotMined}")
+
+            blockchainNetwork.blockchain = longestChainData
+            blockchainNetwork.blockchain.pendingTransactions = transactionsNotMined
+            return True, finalMessage + " Chain updated"
+
+        return True, finalMessage + " You have the longest chain"
 
     except KeyError as e:
         print(e)
-        return "Invalid json returned from a node", 500
+        return False, "Invalid json returned from a node"
     except Exception:
-        return "Could not complete consensus!", 500
+        return False, "Could not complete consensus!"
 
 def isDataValid(jsonStr):
 
@@ -166,9 +199,11 @@ def deconstructTransactionFromJson(transactionData):
     return transaction
 
 def getBlockchainDataFromJson(jsonData):
-    newBlockChain = Blockchain()
 
+    newBlockChain = Blockchain()
     try:
+        newBlockChain.nodes = set(jsonData["Nodes"])
+
         newBlockChain.chain = []
         blocks = jsonData["Blocks"]
         for blockNum in blocks:
@@ -185,18 +220,16 @@ def getBlockchainDataFromJson(jsonData):
         for transactionData in pendingTransactions:
             newBlockChain.pendingTransactions.add(deconstructTransactionFromJson(transactionData))
 
-        newBlockChain.nodes = set(jsonData["Nodes"])
-
         result, blockNum = newBlockChain.isChainValid()
-        if result:
-            return "Your node was updated!", newBlockChain
-        else:
-            print(f"Chain invalid! {blockNum}")
+        if not result:
+            raise "Invalid chain in master!"
+
+        return (True, newBlockChain)
 
     except Exception as e:
-        raise e
-
-    return "Error fetching from Master!", Blockchain()
+        #raise e
+        print(e)
+        return (False, Blockchain())
 
 def propagateTransactionToAllNodes(transaction):
     for node in blockchainNetwork.blockchain.nodes:
