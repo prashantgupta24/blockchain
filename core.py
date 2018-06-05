@@ -65,7 +65,7 @@ class Block:
         self.previousHash=previousHash
         self.nonce = nonce
         self.miningDifficulty = miningDifficulty
-        if not hashVal:
+        if hashVal is None:
             self.hashVal=self.calculateHash()
         else:
             self.hashVal = hashVal
@@ -101,10 +101,13 @@ class Blockchain():
         self.debug = True
         self.minedCoinbase = 50
         self.miningDifficulty = 5
-        genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
-        self.chain = [genesisBlock]
+        self.chain = []
         self.nodes = set()
         self.pendingTransactions = set()
+
+    def setupGenesisBlock(self):
+        genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
+        self.chain.append(genesisBlock)
 
     def __repr__(self):
         return json.dumps(self.getData(), indent = 2)
@@ -137,7 +140,7 @@ class Blockchain():
 
             newBlock = Block(transactions=verifiedTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
-            self.pendingTransactions = set()
+            self.pendingTransactions = set() #PROBLEM HERE, if pending transaction exists, the chain that mined recently removes it without thinking
         else:
             print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock} ...")
             if self.debug:

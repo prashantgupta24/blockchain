@@ -9,6 +9,7 @@ class BlockchainNetwork():
     def __init__(self):
         self.blockchainDb = shelve.open("blockchainDb")
         self.blockchain = Blockchain()
+        self.blockchain.setupGenesisBlock()
         self.debug = True
 
         if 'blockchain.chain' in self.blockchainDb:
@@ -147,7 +148,21 @@ def runConsensusAlgorithm():
                     isMyChainLongest = False
 
         if not isMyChainLongest:
+            allTransactions = set()
+            for block in longestChainData.chain:
+                for transaction in block.transactions:
+                    allTransactions.add(transaction.signature)
+
+            transactionsNotMined = set()
+            for transaction in blockchainNetwork.blockchain.pendingTransactions:
+                print(f"pending transactions : {transaction.signature}")
+                if transaction.signature not in allTransactions:
+                    transactionsNotMined.add(transaction)
+
+            if blockchainNetwork.debug:
+                print(f"All transactions not mined are {[x for x in transactionsNotMined]}")
             blockchainNetwork.blockchain = longestChainData
+            blockchainNetwork.blockchain.pendingTransactions = transactionsNotMined
             return True, finalMessage + " Chain updated"
 
         return True, finalMessage + " You have the longest chain"
@@ -205,6 +220,7 @@ def getBlockchainDataFromJson(jsonData):
 
             for transactionData in transactionData:
                 transactionsForBlock.append(deconstructTransactionFromJson(transactionData))
+
             newBlock = Block(transactions=transactionsForBlock, previousHash=blockData["PreviousHash"], miningDifficulty=newBlockChain.miningDifficulty, nonce=blockData["Nonce"], hashVal=blockData["MyHash"])
             newBlockChain.chain.append(newBlock)
 
@@ -221,7 +237,9 @@ def getBlockchainDataFromJson(jsonData):
     except Exception as e:
         #raise e
         print(e)
-        return (False, Blockchain())
+        newBlockChain = Blockchain()
+        newBlockChain.setupGenesisBlock()
+        return (False, newBlockChain)
 
 def propagateTransactionToAllNodes(transaction):
     for node in blockchainNetwork.blockchain.nodes:
