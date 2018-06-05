@@ -147,22 +147,7 @@ def runConsensusAlgorithm():
                     isMyChainLongest = False
 
         if not isMyChainLongest:
-            # allTransactions = set()
-            # for block in longestChainData.chain:
-            #     for transaction in block.transactions:
-            #         allTransactions.add(transaction.signature)
-            #
-            # transactionsNotMined = set()
-            # for transaction in blockchainNetwork.blockchain.pendingTransactions:
-            #     print(f"pending transactions : {transaction.signature}")
-            #     if transaction.signature not in allTransactions:
-            #         transactionsNotMined.add(transaction)
-            #
-            # if blockchainNetwork.debug:
-            #     print(f"All transactions not mined are {transactionsNotMined}")
-
             blockchainNetwork.blockchain = longestChainData
-            #blockchainNetwork.blockchain.pendingTransactions = transactionsNotMined
             return True, finalMessage + " Chain updated"
 
         return True, finalMessage + " You have the longest chain"
