@@ -32,12 +32,19 @@ def getBlockchain():
 def getBalance(pubKeyStr):
     return "Coins left: " + str(blockchainNetwork.blockchain.getBalance(user=convertToPubKey(pubKeyStr))), 200
 
-@app.route('/mine/<pubKeyStr>', methods=['GET'])
-def mineBlock(pubKeyStr):
-    blockchainNetwork.blockchain.mineBlock(user=convertToPubKey(pubKeyStr))
+@app.route('/mine/broadcast', methods=['POST'])
+def newBlockFound():
     result, message = runConsensusAlgorithm()
     if blockchainNetwork.debug:
         print(f"Result from consensus is {result} with message {message}")
+    writeBlockchainToDb()
+    return "", 200
+
+@app.route('/mine/<pubKeyStr>', methods=['GET'])
+def mineBlock(pubKeyStr):
+    blockchainNetwork.blockchain.mineBlock(user=convertToPubKey(pubKeyStr))
+    for node in blockchainNetwork.blockchain.nodes:
+        requests.post(f'http://{node}/mine/broadcast', json = {})
     writeBlockchainToDb()
     return "Block mined!", 201
 
@@ -132,7 +139,7 @@ def runConsensusAlgorithm():
 
             if blockchainNetwork.debug:
                 print(f"Chainlength for {node} was {chainLength}")
-            if chainLength >= longestChainLength:
+            if chainLength > longestChainLength:
                 (result, newBlockChain) = getBlockchainDataFromJson(data)
                 if result:
                     longestChainLength = chainLength
@@ -140,22 +147,22 @@ def runConsensusAlgorithm():
                     isMyChainLongest = False
 
         if not isMyChainLongest:
-            allTransactions = set()
-            for block in longestChainData.chain:
-                for transaction in block.transactions:
-                    allTransactions.add(transaction.signature)
-
-            transactionsNotMined = set()
-            for transaction in blockchainNetwork.blockchain.pendingTransactions:
-                print(f"pending transactions : {transaction.signature}")
-                if transaction.signature not in allTransactions:
-                    transactionsNotMined.add(transaction)
-
-            if blockchainNetwork.debug:
-                print(f"All transactions not mined are {transactionsNotMined}")
+            # allTransactions = set()
+            # for block in longestChainData.chain:
+            #     for transaction in block.transactions:
+            #         allTransactions.add(transaction.signature)
+            #
+            # transactionsNotMined = set()
+            # for transaction in blockchainNetwork.blockchain.pendingTransactions:
+            #     print(f"pending transactions : {transaction.signature}")
+            #     if transaction.signature not in allTransactions:
+            #         transactionsNotMined.add(transaction)
+            #
+            # if blockchainNetwork.debug:
+            #     print(f"All transactions not mined are {transactionsNotMined}")
 
             blockchainNetwork.blockchain = longestChainData
-            blockchainNetwork.blockchain.pendingTransactions = transactionsNotMined
+            #blockchainNetwork.blockchain.pendingTransactions = transactionsNotMined
             return True, finalMessage + " Chain updated"
 
         return True, finalMessage + " You have the longest chain"

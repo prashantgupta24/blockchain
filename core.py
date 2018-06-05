@@ -100,7 +100,7 @@ class Blockchain():
     def __init__(self):
         self.debug = True
         self.minedCoinbase = 50
-        self.miningDifficulty = 2
+        self.miningDifficulty = 5
         genesisBlock = Block(transactions=[], previousHash=0, miningDifficulty=self.miningDifficulty)
         self.chain = [genesisBlock]
         self.nodes = set()
@@ -128,10 +128,14 @@ class Blockchain():
             signature = rsa.sign(str(miningTransaction).encode(encoding='utf_8'), convertToPrivKey(os.getenv("PRIV_KEY")), "SHA-256")
             miningTransaction.addSignature(signature=signature.hex())
 
-            pendingTransactionsForBlock = list(self.pendingTransactions)
-            pendingTransactionsForBlock.insert(0, miningTransaction)
+            verifiedTransactionsForBlock = []
+            for transaction in self.pendingTransactions:
+                if self.isTransactionValid(transaction=transaction):
+                    verifiedTransactionsForBlock.append(transaction)
 
-            newBlock = Block(transactions=pendingTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
+            verifiedTransactionsForBlock.insert(0, miningTransaction)
+
+            newBlock = Block(transactions=verifiedTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
             self.pendingTransactions = set()
         else:
@@ -186,33 +190,33 @@ class Blockchain():
         return balance
 
     def addTransaction(self, transaction):
+        result, message = self.isTransactionValid(transaction=transaction)
+        if not result:
+            return False, message
+
+        self.pendingTransactions.add(transaction)
+        return True, "Transaction added successfully!"
+
+    def isTransactionValid(self, transaction):
+        if transaction.signature == "":
+            return False, "Signature empty!"
+
         if not isinstance(transaction, Transaction):
             return False, f"Not a transaction object!\n{transaction}!\n"
+
         if transaction in self.pendingTransactions:
             return False, f"Transaction already present!\n{transaction}!\n"
-        if not self.isTransactionValid(transaction=transaction):
-            return False, f"Incorrect signature for transaction\n{transaction}!\n"
 
         userBalance = self.getBalance(transaction.fromAddress)
         if userBalance < transaction.amount:
             return False, f"Insufficient balance! You only have {userBalance} coins but you are trying to send {transaction.amount}"
 
-        self.pendingTransactions.add(transaction)
-        return True, "Transaction added successfully!"
-
-    @staticmethod
-    def isTransactionValid(transaction):
-        if transaction.signature == "":
-            print("signature empty")
-            return False
-
         try:
             rsa.verify(str(transaction).encode(encoding='utf_8'), bytes.fromhex(transaction.signature), transaction.fromAddress)
         except rsa.VerificationError:
-            print(f"signature not matching!")
-            return False
+            return False, f"signature not matching!"
 
-        return True
+        return True, "Valid"
 
 def convertToPubKey(pubKeyStr):
     n, e = [int(key.strip()) for key in pubKeyStr.split(",")]
