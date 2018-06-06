@@ -140,7 +140,7 @@ class Blockchain():
 
             newBlock = Block(transactions=verifiedTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
-            self.pendingTransactions = set() #PROBLEM HERE, if pending transaction exists, the chain that mined recently removes it without thinking
+            self.pendingTransactions = self.pendingTransactions- set(verifiedTransactionsForBlock)
         else:
             print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock} ...")
             if self.debug:

@@ -9,7 +9,6 @@ class BlockchainNetwork():
     def __init__(self):
         self.blockchainDb = shelve.open("blockchainDb")
         self.blockchain = Blockchain()
-        self.blockchain.setupGenesisBlock()
         self.debug = True
 
         if 'blockchain.chain' in self.blockchainDb:
@@ -17,8 +16,16 @@ class BlockchainNetwork():
                 self.blockchain.chain = self.blockchainDb['blockchain.chain']
                 self.blockchain.nodes = self.blockchainDb['blockchain.nodes']
                 self.blockchain.pendingTransactions = self.blockchainDb['blockchain.pendingTransactions']
+                if self.debug:
+                    print("Blockchain found in db! Extracted information from it")
             except Exception:
-                pass
+                if self.debug:
+                    print("Error extracting information from blockchain db")
+                self.blockchain.setupGenesisBlock()
+        else:
+            if self.debug:
+                print("Blockchain not found in db! Creating new")
+            self.blockchain.setupGenesisBlock()
 
 
 app = Flask(__name__)
@@ -45,7 +52,11 @@ def newBlockFound():
 def mineBlock(pubKeyStr):
     blockchainNetwork.blockchain.mineBlock(user=convertToPubKey(pubKeyStr))
     for node in blockchainNetwork.blockchain.nodes:
-        requests.post(f'http://{node}/mine/broadcast', json = {})
+        try:
+            requests.post(f'http://{node}/mine/broadcast', json = {})
+        except Exception:
+            if blockchainNetwork.debug:
+                print(f"Node {node} not reachable...")
     writeBlockchainToDb()
     return "Block mined!", 201
 
@@ -89,7 +100,6 @@ def getKeys():
 @app.route('/new/signedTransaction', methods=['POST'])
 def addNewSignedTransaction():
     data = request.get_json()
-    print(data["Signature"])
     transaction = deconstructTransactionFromJson(data)
     blockchainNetwork.blockchain.addTransaction(transaction)
     return "Success!", 201
@@ -126,6 +136,9 @@ def addTransaction():
     except KeyError as e:
         print(e)
         return "Missing a field! Please check all required fields are present", 500
+    except Exception as e:
+        print(e)
+        return "Server error!", 500
 
 def runConsensusAlgorithm():
     try:
@@ -135,17 +148,21 @@ def runConsensusAlgorithm():
         finalMessage = "Consensus completed!"
 
         for node in blockchainNetwork.blockchain.nodes:
-            data = requests.get(f'http://{node}/blockchain').json()
-            chainLength = data["LengthOfChain"]
+            try:
+                data = requests.get(f'http://{node}/blockchain').json()
+                chainLength = data["LengthOfChain"]
 
-            if blockchainNetwork.debug:
-                print(f"Chainlength for {node} was {chainLength}")
-            if chainLength > longestChainLength:
-                (result, newBlockChain) = getBlockchainDataFromJson(data)
-                if result:
-                    longestChainLength = chainLength
-                    longestChainData = newBlockChain
-                    isMyChainLongest = False
+                if blockchainNetwork.debug:
+                    print(f"Chainlength for {node} was {chainLength}")
+                if chainLength > longestChainLength:
+                    (result, newBlockChain) = getBlockchainDataFromJson(data)
+                    if result:
+                        longestChainLength = chainLength
+                        longestChainData = newBlockChain
+                        isMyChainLongest = False
+            except Exception:
+                if blockchainNetwork.debug:
+                    print(f"Node {node} not reachable...")
 
         if not isMyChainLongest:
             allTransactions = set()
@@ -155,7 +172,6 @@ def runConsensusAlgorithm():
 
             transactionsNotMined = set()
             for transaction in blockchainNetwork.blockchain.pendingTransactions:
-                print(f"pending transactions : {transaction.signature}")
                 if transaction.signature not in allTransactions:
                     transactionsNotMined.add(transaction)
 
@@ -193,11 +209,17 @@ def isDataValid(jsonStr):
     return True, "Valid"
 
 def writeBlockchainToDb():
-    blockchainNetwork.blockchainDb = shelve.open("blockchainDb")
-    blockchainNetwork.blockchainDb['blockchain.chain'] = blockchainNetwork.blockchain.chain
-    blockchainNetwork.blockchainDb['blockchain.nodes'] = blockchainNetwork.blockchain.nodes
-    blockchainNetwork.blockchainDb['blockchain.pendingTransactions'] = blockchainNetwork.blockchain.pendingTransactions
-    blockchainNetwork.blockchainDb.close()
+    try:
+        blockchainNetwork.blockchainDb = shelve.open("blockchainDb")
+        blockchainNetwork.blockchainDb['blockchain.chain'] = blockchainNetwork.blockchain.chain
+        blockchainNetwork.blockchainDb['blockchain.nodes'] = blockchainNetwork.blockchain.nodes
+        blockchainNetwork.blockchainDb['blockchain.pendingTransactions'] = blockchainNetwork.blockchain.pendingTransactions
+        if blockchainNetwork.debug:
+            print("Writing blockchain to db complete!")
+    except Exception as e:
+        print(e)
+    finally:
+        blockchainNetwork.blockchainDb.close()
 
 def deconstructTransactionFromJson(transactionData):
     fromAddress = transactionData["FromAddress"][transactionData["FromAddress"].index("(")+1:transactionData["FromAddress"].index(")")]
@@ -230,7 +252,7 @@ def getBlockchainDataFromJson(jsonData):
 
         result, blockNum = newBlockChain.isChainValid()
         if not result:
-            raise "Invalid chain in master!"
+            raise Exception("Invalid chain in master!")
 
         return (True, newBlockChain)
 
@@ -243,4 +265,8 @@ def getBlockchainDataFromJson(jsonData):
 
 def propagateTransactionToAllNodes(transaction):
     for node in blockchainNetwork.blockchain.nodes:
-        requests.post(f'http://{node}/new/signedTransaction', json = json.loads(json.dumps(transaction.getData())))
+        try:
+            requests.post(f'http://{node}/new/signedTransaction', json = json.loads(json.dumps(transaction.getData())))
+        except Exception:
+            if blockchainNetwork.debug:
+                print(f"Node {node} not reachable...")
