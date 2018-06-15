@@ -3,9 +3,9 @@ import hashlib
 import json
 import time
 import rsa
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+load_dotenv(find_dotenv())
 
 class Transaction:
     def __init__(self, fromAddress, toAddress, amount, timestamp=None, signature=None):
@@ -100,7 +100,7 @@ class Blockchain():
     def __init__(self):
         self.debug = True
         self.minedCoinbase = 50
-        self.miningDifficulty = 5
+        self.miningDifficulty = 3
         self.chain = []
         self.nodes = set()
         self.pendingTransactions = set()
@@ -140,7 +140,7 @@ class Blockchain():
 
             newBlock = Block(transactions=verifiedTransactionsForBlock, previousHash=self.chain[-1].hashVal, miningDifficulty=self.miningDifficulty)
             self.chain.append(newBlock)
-            self.pendingTransactions = self.pendingTransactions- set(verifiedTransactionsForBlock)
+            self.pendingTransactions = self.pendingTransactions - set(verifiedTransactionsForBlock)
         else:
             print(f"Chain is not valid! Someone tampered with the data! Issue with block {issueBlock}. Removing block {issueBlock} ...")
             if self.debug:
@@ -166,10 +166,10 @@ class Blockchain():
                     return False, blockNum
                 else:
                     allTransactions.add(transaction.signature)
-
-                    if not self.isTransactionValid(transaction=transaction):
+                    result, message = self.isTransactionValid(transaction=transaction)
+                    if not result:
                         if self.debug:
-                            print(f"Transaction signature not matching! {transaction}")
+                            print(message)
                         return False, blockNum
 
         return True, -1
@@ -212,7 +212,8 @@ class Blockchain():
 
         userBalance = self.getBalance(transaction.fromAddress)
         if userBalance < transaction.amount:
-            return False, f"Insufficient balance! You only have {userBalance} coins but you are trying to send {transaction.amount}"
+            if convertToPubKey(os.getenv("PUB_KEY")) != transaction.fromAddress:
+                return False, f"Insufficient balance! You only have {userBalance} coins but you are trying to send {transaction.amount}"
 
         try:
             rsa.verify(str(transaction).encode(encoding='utf_8'), bytes.fromhex(transaction.signature), transaction.fromAddress)
