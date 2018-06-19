@@ -13,7 +13,7 @@ Clone the repo, and then run `install.sh`. It will start the Blockchain REST app
 
 Once that is done, you can run the `public.sh` on another terminal window, which exposes your `localhost:8001` port to the outside world, and you can talk to the main blockchain node and be a part of the consensus!
 
-**NOTE:** If you face any issues with the above script, please refer to the [detailed]() readme, which has manual instructions for you to follow to install the app.
+**NOTE:** If you face any issues with the above script, please refer to the [detailed](https://github.com/prashantgupta24/blockchain/blob/master/detailed_Readme.md) readme, which has manual instructions for you to follow to install the app.
 
 ## REST API documentation
 
