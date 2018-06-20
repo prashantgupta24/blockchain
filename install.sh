@@ -28,17 +28,19 @@ echo "####################################################"
 echo "Python version ..."
 python --version
 echo "####################################################"
-echo "Installing blockchain application ..."
+echo "Installing python libraries needed ..."
 echo ""
-pip install --extra-index-url https://test.pypi.org/simple/ pgBlockchain
+python setup.py install
 echo "####################################################"
 pip list
 echo "####################################################"
-cat >> main.py <<EOL
-from pgBlockchain import network
-app = network.createApp()
-EOL
-echo "Starting application ..."
 echo ""
-export FLASK_APP=main.py
-flask run -p 8001
+echo "Done."
+echo ""
+echo "Please run the following commands to start the application ...
+####################################################
+source $MY_ENV/bin/activate
+flask run
+####################################################"
+echo ""
+echo "After that, please run the public.sh script in another terminal window to make the blockchain visible publicly"

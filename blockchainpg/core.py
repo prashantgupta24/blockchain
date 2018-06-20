@@ -5,7 +5,14 @@ import time
 import rsa
 from dotenv import load_dotenv, find_dotenv
 
+from blockchainpg.blockchain_utils import convertToPrivKey, convertToPubKey
+
 load_dotenv(find_dotenv())
+
+"""
+The transaction class holds all aspects of a transaction object, which includes the addresses, timestamp, and
+most importantly, the signature. Due to the signature, a transaction cannot be modified in any way, and can neither be duplicated. The signature is what holds the authenticity of a transaction.
+"""
 
 class Transaction:
     def __init__(self, fromAddress, toAddress, amount, timestamp=None, signature=None):
@@ -59,6 +66,9 @@ class Transaction:
             "Signature": self.signature
         }
 
+"""
+The block is also an integral part of the blockchain. It holds a set of verified transactions, and it has a hash value calculated based on the mining difficulty set. The nonce value is incremented until the hashVal has the corresponding number of zeros.
+"""
 class Block:
     def __init__(self, transactions, previousHash, miningDifficulty, nonce=0, hashVal=None):
         self.transactions=transactions
@@ -100,7 +110,7 @@ class Blockchain():
     def __init__(self):
         self.debug = True
         self.minedCoinbase = 50
-        self.miningDifficulty = 3
+        self.miningDifficulty = 5
         self.chain = []
         self.nodes = set()
         self.pendingTransactions = set()
@@ -133,7 +143,7 @@ class Blockchain():
 
             verifiedTransactionsForBlock = []
             for transaction in self.pendingTransactions:
-                if self.isTransactionValid(transaction=transaction):
+                if self._isTransactionValid(transaction=transaction):
                     verifiedTransactionsForBlock.append(transaction)
 
             verifiedTransactionsForBlock.insert(0, miningTransaction)
@@ -166,7 +176,7 @@ class Blockchain():
                     return False, blockNum
                 else:
                     allTransactions.add(transaction.signature)
-                    result, message = self.isTransactionValid(transaction=transaction)
+                    result, message = self._isTransactionValid(transaction=transaction)
                     if not result:
                         if self.debug:
                             print(message)
@@ -193,14 +203,14 @@ class Blockchain():
         return balance
 
     def addTransaction(self, transaction):
-        result, message = self.isTransactionValid(transaction=transaction)
+        result, message = self._isTransactionValid(transaction=transaction)
         if not result:
             return False, message
 
         self.pendingTransactions.add(transaction)
         return True, "Transaction added successfully!"
 
-    def isTransactionValid(self, transaction):
+    def _isTransactionValid(self, transaction):
         if transaction.signature == "":
             return False, "Signature empty!"
 
@@ -221,11 +231,3 @@ class Blockchain():
             return False, f"signature not matching!"
 
         return True, "Valid"
-
-def convertToPubKey(pubKeyStr):
-    n, e = [int(key.strip()) for key in pubKeyStr.split(",")]
-    return rsa.PublicKey(n=n, e=e)
-
-def convertToPrivKey(privKeyStr):
-    n, e, d, p, q = [int(key.strip()) for key in privKeyStr.split(",")]
-    return rsa.PrivateKey(n=n, e=e, d=d, p=p, q=q)

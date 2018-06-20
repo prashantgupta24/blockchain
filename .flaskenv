@@ -1,2 +1,2 @@
-FLASK_RUN_PORT=8000
-FLASK_APP=pgBlockchain/main.py
+FLASK_RUN_PORT=8001
+FLASK_APP=main.py

@@ -28,39 +28,13 @@ You will need `python3` and `virtualenv`, both of which are explained below:
 
 ### Blockchain application
 
-- Install the `pgBlockchain` app using this command
+- Install the dependencies using this command
 
 	```
-	$ pip install --extra-index-url https://test.pypi.org/simple/ pgBlockchain
+	$ python setup.py install
 	```
 
-- Create a `python` file in your current directory
-
-	```
-	$ touch main.py
-	```
-
-	And copy these 2 lines in it
-
-	```
-	from pgBlockchain import network
-
-	app = network.createApp()
-	```
-
-- Export this file to the flask app using this command:
-
-	```
-	$ export FLASK_APP=main.py
-	```
-
-- That's it! Now to start the application, just type `flask run -p <port_num>` where the port number is the port you want to run your blockchain on your local machine.
-
-	**Example**:
-
-	```
-	$ flask run -p 8001
-	```
+- That's it! Now to start the application, just type `flask run`.
 
 	You should see something like this
 
