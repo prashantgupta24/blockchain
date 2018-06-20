@@ -69,7 +69,19 @@ Clone the repo, and then run `install.sh`. Once it is finished, run `flask run`.
 
 ### Making it public
 
-Once that is done, you can run the `public.sh` on another terminal window, which exposes your `localhost:8001` port to the outside world, and you can talk to the main blockchain node and be a part of the consensus!
+Once that is done, you can run the `public.sh` on another terminal window, which exposes your `localhost:8001` port to the outside world, and you can talk to the main blockchain node and be a part of the consensus! You will see something like this:
+
+```
+Session Status                online
+Account                       Prashant Gupta (Plan: Free)
+Version                       2.2.8
+Region                        United States (us)
+Web Interface                 http://127.0.0.1:4040
+Forwarding                    http://734cd0b3.ngrok.io -> localhost:8001
+Forwarding                    https://734cd0b3.ngrok.io -> localhost:8001
+```
+
+From this, copy the forwarding address (omit the `https://`) `734cd0b3.ngrok.io`, and you can use that instead of `localhost:8001` in all REST calls to your application.
 
 **NOTE:** If you face any issues with the above script, please refer to the [detailed](https://github.com/prashantgupta24/blockchain/blob/master/detailed_Readme.md) readme, which has manual instructions for you to follow to install the app.
 
@@ -92,6 +104,15 @@ Once you've gone through the REST documentation, I would like to outline the ini
 			"MyAddress":"<Your address>"
 		}
 
-	where the master address is the master node address, and your address is the address that you see when you run `public.sh`
+	where the master address is the master node address, and your address is the address that you see when you run `public.sh`.
+	
+	Example:
+	
+	```
+	{
+		"Master":"734cd0b3.ngrok.io",
+		"MyAddress":"734cd0b3.ngrok.io"
+	}
+	```
 
 3. Once that is done, you will get a copy of the entire blockchain that's in the network. Hopefully the rest of the REST endpoints should be intuitive enough. Feel free to mine!
