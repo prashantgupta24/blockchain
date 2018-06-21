@@ -69,7 +69,7 @@ Clone the repo, and then run `install.sh`. Once it is finished, run `flask run`.
 
 ### Making it public
 
-Once that is done, you can run the `public.sh` on another terminal window, which exposes your `localhost:8001` port to the outside world, and you can talk to the main blockchain node and be a part of the consensus! You will see something like this:
+Once that is done, you can run the `public.sh` on another terminal window, which uses `ngrok` to expose your `localhost:8001` port to the outside world, and you can talk to the main blockchain node and be a part of the consensus! You will see something like this:
 
 ```
 Session Status                online
@@ -110,7 +110,7 @@ Once you've gone through the REST documentation, I would like to outline the ini
 	
 	```
 	{
-		"Master":"734cd0b3.ngrok.io",
+		"Master":"444rvk04.ngrok.io",
 		"MyAddress":"734cd0b3.ngrok.io"
 	}
 	```
