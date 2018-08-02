@@ -1,6 +1,6 @@
 ## A POC (proof of concept) of cryptocurrency using blockchains implemented using REST
 
-This is a fully working prototype for a crypto-currency using the basic blockchain mechanisms, which include:
+This is a fully working prototype for a crypto-currency using the basic blockchain mechanisms, which includes:
 
 - Signed transactions
 - Consensus algorithm within a multi-node architecture
